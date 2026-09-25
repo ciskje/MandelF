@@ -239,8 +239,8 @@ described purely as an interface and behavior contract, and the acceptance
 checklist carries OS-agnostic portability expectations (docs only, no
 version bump). Documentation is kept separate from release history, development tasks, generic questions, and repository workflow instructions.
 
-Release v2.22.7 is published on GitHub with the self-contained
-`MandelbrotViewer.exe` asset; the README links to the latest release download.
+Release v2.22.8 is published on GitHub with the self-contained
+`MandelbrotViewer.exe` asset (v2.22.8, ~155 MB); the README links to the latest release download.
 A Windows installer `MandelbrotViewer-Setup-2.22.7.exe` (~47 MB, Inno Setup,
 LZMA2, EN/IT wizard, admin scope, Start-menu + optional desktop shortcut,
 post-install launch option) is attached to the same GitHub release and built from a fresh `published\` self-contained
@@ -264,3 +264,38 @@ sample the same cached 4096-entry palette table (CUDA device buffer, DirectX
 texture with linear filtering) and skip known-interior points via the
 cardioid/bulb test in Mandelbrot mode; GPU benchmark kernels are
 iterations-only and unchanged.
+
+Source review (no code change, no version bump): ponytail over-engineering
+pass found one dead path (`Mandelbrot.ColorFromEscape` + `PaletteColors.ColorFor`,
+zero callers — "kept for reference"), one ignored parameter (`maxIter` in
+`PaletteColors.GetLut`, never read yet part of the cache key in three places),
+and three duplications worth shrinking (BenchmarkCpu/BenchmarkCpuFloat frame
+loop, `RenderPreviewToBitmap` 7-arg forwarder, `DeviceShortName`/`ShortAdapterName`).
+Details in chat; nothing applied.
+
+Full-repo audit (no code change, no version bump): same verdicts, repo-wide —
+biggest item is docs duplication (`SPEC_FOR_LLM.md` vs
+`SPEC_FOR_LLM_PLATFORM_AGNOSTIC.md`, ~1200 lines each), followed by the
+BenchmarkCpu/BenchmarkCpuFloat frame-loop duplication and the
+BenchDx/BenchCuda/BenchCpu triplication in `Diagnostics.cs`. No dependency
+bloat found (hand-rolled `CudaNative` P/Invoke instead of a wrapper package is
+the lean choice). Findings in chat; nothing applied.
+
+v2.22.8 applied the audit (code only): dead `ColorFromEscape`/`ColorFor`
+deleted, `maxIter` dropped from the LUT cache key, CPU benchmark loops merged
+(`RunCpuBenchmark` + scalar row functions), CLI trial loops merged
+(`RunTrials`), `CopyTile` → `DrawImageUnscaled`, wrapper/alias one-liners
+removed. `SPEC_FOR_LLM.md` kept: the duplication flag was rejected on review —
+it is the Windows-specific replication contract (backend names, paths, WinForms),
+while `SPEC_FOR_LLM_PLATFORM_AGNOSTIC.md` delegates all implementation choices;
+merging them would destroy one of the two purposes. Verified with a clean build
+(0 warnings), `--diag-gpu` CUDA render, and `--bench-cpu float`.
+
+Launcher fix (no code change, no version bump): `run.bat` hardcoded
+`%USERPROFILE%\.dotnet\dotnet.exe`, but this machine has dotnet in
+`C:\Program Files\dotnet` on PATH — now PATH first, user path as fallback
+(same fallback added to `publish.ps1`, AGENTS.md toolchain line corrected).
+Two self-inflicted issues found while verifying: a `)` inside the batch `echo`
+text prematurely closed the if-block (`. non atteso.`, fell into the error
+branch), and the rewritten file had LF-only endings cmd cannot parse — both
+fixed; verified with `run.bat --diag-gpu` (exit 0, CUDA render OK).

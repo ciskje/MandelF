@@ -98,7 +98,6 @@ internal static class PaletteColors
     private static readonly object LutGate = new();
     private static int[]? _cachedLut;
     private static Palette _cachedPalette = (Palette)(-1);
-    private static int _cachedMaxIter = -1;
 
     // Gradients (t, r, g, b) of the palette (5 stops from t=0 to t=1).
     internal static (double T, byte R, byte G, byte B)[] GetStops(Palette palette) => palette switch
@@ -112,43 +111,16 @@ internal static class PaletteColors
         _ => FireStops,
     };
 
-    // Color interpolation for the CPU path (aligned with
-    // the device table sampled by LutColor in Cuda/mandelbrot.cu and with Graded in the HLSL shader).
-    // Mapping: t = (nu/maxIter)^0.35 (gamma, smooth iteration already applied
-    // by the caller).
-    internal static int ColorFor(double iterations, int maxIter, Palette palette)
-    {
-        double t = Math.Pow(Math.Clamp(iterations / Math.Max(1, maxIter), 0.0, 1.0), 0.35);
-        var stops = GetStops(palette);
-
-        var (t0, r0, g0, b0) = stops[0];
-        for (int i = 1; i < stops.Length; i++)
-        {
-            var (t1, r1, g1, b1) = stops[i];
-            if (t <= t1)
-            {
-                double f = (t - t0) / Math.Max(double.Epsilon, t1 - t0);
-                int r = (int)(r0 + f * (r1 - r0));
-                int g = (int)(g0 + f * (g1 - g0));
-                int b = (int)(b0 + f * (b1 - b0));
-                return unchecked((int)(0xFF000000u | ((uint)r << 16) | ((uint)g << 8) | (uint)b));
-            }
-            (t0, r0, g0, b0) = (t1, r1, g1, b1);
-        }
-        var last = stops[^1];
-        return unchecked((int)(0xFF000000u | ((uint)last.R << 16) | ((uint)last.G << 8) | last.B));
-    }
 
     // Returns the cached fast color table for the render hot loop.
     // Param palette (Palette): Input: palette whose stops are baked into the table.
-    // Param maxIter (int): Input: iteration budget baked into the table normalization.
     // Returns (int[]): Output: shared cached array of LutSize packed ARGB colors.
     //   Entry i holds the color for raw=(i+0.5)/LutSize with t=raw^0.35. Do not mutate.
-    internal static int[] GetLut(Palette palette, int maxIter)
+    internal static int[] GetLut(Palette palette)
     {
         lock (LutGate)
         {
-            if (_cachedLut != null && _cachedPalette == palette && _cachedMaxIter == maxIter)
+            if (_cachedLut != null && _cachedPalette == palette)
                 return _cachedLut;
             var stops = GetStops(palette);
             // Flatten stops to channels: all palettes use even spacing, so segment = t*4
@@ -179,7 +151,6 @@ internal static class PaletteColors
             }
             _cachedLut = lut;
             _cachedPalette = palette;
-            _cachedMaxIter = maxIter;
             return lut;
         }
     }

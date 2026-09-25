@@ -199,7 +199,6 @@ float4 BenchPS(float4 pos : SV_Position) : SV_Target
     private static ID3D11ShaderResourceView? _lutSrv;
     private static ID3D11SamplerState? _lutSampler;
     private static Palette _lutPalette = (Palette)(-1);
-    private static int _lutMaxIter = -1;
 
     public static bool IsReady => _device != null;
     public static string LastError { get; private set; } = "";
@@ -428,14 +427,13 @@ float4 BenchPS(float4 pos : SV_Position) : SV_Target
     // Same entries as PaletteColors.GetLut (packed ARGB); the shader samples them
     // with linear filtering, so adjacent entries interpolate like the CPU table.
     // Param palette (Palette): Input: palette baked into the texture.
-    // Param maxIter (int): Input: iteration budget baked into the normalization.
-    private static void EnsureLut(Palette palette, int maxIter)
+    private static void EnsureLut(Palette palette)
     {
         if (_device == null || _context == null)
             throw new InvalidOperationException("DirectX not initialized.");
-        if (_lutTex != null && _lutSrv != null && _lutPalette == palette && _lutMaxIter == maxIter)
+        if (_lutTex != null && _lutSrv != null && _lutPalette == palette)
             return;
-        int[] table = PaletteColors.GetLut(palette, maxIter);
+        int[] table = PaletteColors.GetLut(palette);
         _lutSrv?.Dispose(); _lutSrv = null;
         _lutTex?.Dispose();
         var desc = new Texture1DDescription
@@ -473,7 +471,6 @@ float4 BenchPS(float4 pos : SV_Position) : SV_Target
             _context.Unmap(_lutTex, 0);
         }
         _lutPalette = palette;
-        _lutMaxIter = maxIter;
     }
 
     private static void CreateViews(int width, int height)
@@ -552,7 +549,7 @@ float4 BenchPS(float4 pos : SV_Position) : SV_Target
     public static void Render(double centerX, double centerY, double scale, int width, int height, int maxIter, int aa, Palette palette, double juliaCx = 0, double juliaCy = 0, bool julia = false)
     {
         if (!IsReady) return;
-        EnsureLut(palette, maxIter);
+        EnsureLut(palette);
         DrawFrame(BuildParams(centerX, centerY, scale, width, height, maxIter, aa,
             juliaCx: juliaCx, juliaCy: juliaCy, julia: julia), _rtv!, _ps!, width, height);
         _swapChain!.Present(0, PresentFlags.None);
@@ -799,7 +796,7 @@ float4 BenchPS(float4 pos : SV_Position) : SV_Target
     // Compressed name for the UI and the history: "NVIDIA GeForce RTX 5070 Ti"
     // → "RTX 5070 Ti", "AMD Radeon(TM) Graphics" → "AMD Radeon Graphics".
     public static string ShortAdapterName(string fullName) =>
-        fullName.Replace("NVIDIA GeForce ", "").Replace("(TM)", "").Trim();
+        GpuMandelbrot.Shorten(fullName);
 
     // Captures the backbuffer in a Bitmap (for Save PNG).
     public static Bitmap Capture()
@@ -813,12 +810,7 @@ float4 BenchPS(float4 pos : SV_Position) : SV_Target
     // swapchain and returns it as a Bitmap: the benchmark preview for the
     // DirectX engine (without presenting anything on the main window).
     public static Bitmap? RenderPreviewToBitmap(double centerX, double centerY, double scale, int width, int height, int maxIter, int aa, Palette palette,
-        double juliaCx = 0, double juliaCy = 0, bool julia = false) =>
-        RenderPreviewToBitmap(centerX, centerY, scale, width, height, maxIter, aa, palette,
-            0, 0, 0, 0, juliaCx, juliaCy, julia);
-
-    public static Bitmap? RenderPreviewToBitmap(double centerX, double centerY, double scale, int width, int height, int maxIter, int aa, Palette palette,
-        int fullWidth, int fullHeight, int offsetX, int offsetY,
+        int fullWidth = 0, int fullHeight = 0, int offsetX = 0, int offsetY = 0,
         double juliaCx = 0, double juliaCy = 0, bool julia = false)
     {
         if (!IsReady || _context is null) return null;
@@ -842,7 +834,7 @@ float4 BenchPS(float4 pos : SV_Position) : SV_Target
             using ID3D11Texture2D target = _device!.CreateTexture2D(desc);
             using ID3D11RenderTargetView rtv = _device.CreateRenderTargetView(target);
 
-            EnsureLut(palette, maxIter);
+            EnsureLut(palette);
             DrawFrame(BuildParams(centerX, centerY, scale, width, height, maxIter, aa,
                 fullWidth, fullHeight, offsetX, offsetY, juliaCx, juliaCy, julia), rtv, _ps!, width, height);
 
@@ -912,7 +904,6 @@ float4 BenchPS(float4 pos : SV_Position) : SV_Target
         _lutTex?.Dispose(); _lutTex = null;
         _lutSampler?.Dispose(); _lutSampler = null;
         _lutPalette = (Palette)(-1);
-        _lutMaxIter = -1;
         _cbuffer?.Dispose(); _cbuffer = null;
         _benchPs?.Dispose(); _benchPs = null;
         _ps?.Dispose(); _ps = null;

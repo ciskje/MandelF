@@ -100,6 +100,30 @@ internal static class Diagnostics
     // Param runs (int): Input, repetitions per card.
     // Param budget (TimeSpan): Input, time budget of each single run.
     // Param csvPath (string?): Input, CSV file for one row per run; null = no CSV output.
+    // Shared trials loop for the CLI benchmarks: runs the trial up to `runs`
+    // times, prints each result, appends CSV rows, returns the best MPixel/s.
+    private static double RunTrials(string engine, string device, string precision,
+        int runs, string? csvPath, Func<(int Frames, double Seconds)> trial, string tag = "")
+    {
+        double best = 0;
+        for (int r = 1; r <= runs; r++)
+        {
+            try
+            {
+                var (frames, seconds) = trial();
+                double mps = BenchmarkStandard.PixelsPerSecond(frames, seconds) / 1e6;
+                best = Math.Max(best, mps);
+                Console.WriteLine($"  {tag}run {r}: {frames} frames in {seconds:0.00} s  →  {mps:0.#} MPixel/s");
+                WriteCsvRow(csvPath, engine, device, precision, r, frames, seconds, mps);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"  {tag}run {r} failed: {ex.GetType().Name}: {ex.Message}");
+            }
+        }
+        return best;
+    }
+
     public static void BenchDx(string? adapterName, int runs, TimeSpan budget, string? csvPath = null)
     {
         int gridW = BenchmarkStandard.Width * BenchmarkStandard.Aa;
@@ -143,23 +167,13 @@ internal static class Diagnostics
                     Console.WriteLine("  offscreen grid not created: " + ex.Message);
                     continue;
                 }
-                for (int r = 1; r <= runs; r++)
+                best = RunTrials("DirectX", shortName, "float", runs, csvPath, () =>
                 {
-                    try
-                    {
-                        var (seconds, frames) = DxMandelbrot.RunBenchmarkFramesOffscreen(
-                            BenchmarkStandard.CenterX, BenchmarkStandard.CenterY, BenchmarkStandard.Scale,
-                            gridW, gridH, BenchmarkStandard.MaxIter, budget, null, CancellationToken.None);
-                        double mps = BenchmarkStandard.PixelsPerSecond(frames, seconds) / 1e6;
-                        best = Math.Max(best, mps);
-                        Console.WriteLine($"  run {r}: {frames} frames in {seconds:0.00} s  →  {mps:0.#} MPixel/s");
-                        WriteCsvRow(csvPath, "DirectX", shortName, "float", r, frames, seconds, mps);
-                    }
-                    catch (Exception ex)
-                    {
-                        Console.WriteLine($"  run {r} failed: {ex.GetType().Name}: {ex.Message}");
-                    }
-                }
+                    var (seconds, frames) = DxMandelbrot.RunBenchmarkFramesOffscreen(
+                        BenchmarkStandard.CenterX, BenchmarkStandard.CenterY, BenchmarkStandard.Scale,
+                        gridW, gridH, BenchmarkStandard.MaxIter, budget, null, CancellationToken.None);
+                    return (frames, seconds);
+                });
             }
             finally
             {
@@ -211,7 +225,7 @@ internal static class Diagnostics
         var bestPerDevice = new List<(string Short, double Best32, double Best64)>();
         foreach (string device in devices)
         {
-            string shortName = device.Replace("NVIDIA GeForce ", "").Trim();
+            string shortName = GpuMandelbrot.Shorten(device);
             Console.WriteLine();
             Console.WriteLine($"=== {shortName} ===");
             if (!GpuMandelbrot.TryInitialize(device))
@@ -224,25 +238,15 @@ internal static class Diagnostics
             foreach (bool useDouble in new[] { false, true })
             {
                 string tag = useDouble ? "64-bit" : "32-bit";
-                for (int r = 1; r <= runs; r++)
+                double m = RunTrials("CUDA", shortName, tag, runs, csvPath, () =>
                 {
-                    try
-                    {
-                        var (_, seconds, frames) = GpuMandelbrot.BenchmarkGpu(
-                            BenchmarkStandard.CenterX, BenchmarkStandard.CenterY, BenchmarkStandard.Scale,
-                            BenchmarkStandard.Width, BenchmarkStandard.Height, BenchmarkStandard.MaxIter,
-                            BenchmarkStandard.Aa, useDouble, budget, null, CancellationToken.None);
-                        double mps = BenchmarkStandard.PixelsPerSecond(frames, seconds) / 1e6;
-                        if (useDouble) best64 = Math.Max(best64, mps);
-                        else best32 = Math.Max(best32, mps);
-                        Console.WriteLine($"  {tag} run {r}: {frames} frames in {seconds:0.00} s  →  {mps:0.#} MPixel/s");
-                        WriteCsvRow(csvPath, "CUDA", shortName, tag, r, frames, seconds, mps);
-                    }
-                    catch (Exception ex)
-                    {
-                        Console.WriteLine($"  {tag} run {r} failed: {ex.GetType().Name}: {ex.Message}");
-                    }
-                }
+                    var (_, seconds, frames) = GpuMandelbrot.BenchmarkGpu(
+                        BenchmarkStandard.CenterX, BenchmarkStandard.CenterY, BenchmarkStandard.Scale,
+                        BenchmarkStandard.Width, BenchmarkStandard.Height, BenchmarkStandard.MaxIter,
+                        BenchmarkStandard.Aa, useDouble, budget, null, CancellationToken.None);
+                    return (frames, seconds);
+                }, tag + " ");
+                if (useDouble) best64 = m; else best32 = m;
             }
             GpuMandelbrot.Dispose();
 
@@ -304,30 +308,19 @@ internal static class Diagnostics
             $"({BenchmarkStandard.PixelsPerFrame / 1e6:0.##} MPixel/frame), " +
             $"{BenchmarkStandard.MaxIter} iter, {precision}, iterations only.");
 
-        double best = 0;
-        for (int r = 1; r <= runs; r++)
+        double best = RunTrials("CPU", CpuName(), precision, runs, csvPath, () =>
         {
-            try
-            {
-                var (_, seconds, frames) = useFloat
-                    ? Mandelbrot.BenchmarkCpuFloat(
-                        BenchmarkStandard.CenterX, BenchmarkStandard.CenterY, BenchmarkStandard.Scale,
-                        BenchmarkStandard.Width, BenchmarkStandard.Height, BenchmarkStandard.MaxIter,
-                        BenchmarkStandard.Aa, budget, null, CancellationToken.None)
-                    : Mandelbrot.BenchmarkCpu(
-                        BenchmarkStandard.CenterX, BenchmarkStandard.CenterY, BenchmarkStandard.Scale,
-                        BenchmarkStandard.Width, BenchmarkStandard.Height, BenchmarkStandard.MaxIter,
-                        BenchmarkStandard.Aa, budget, null, CancellationToken.None);
-                double mps = BenchmarkStandard.PixelsPerSecond(frames, seconds) / 1e6;
-                best = Math.Max(best, mps);
-                Console.WriteLine($"  run {r}: {frames} frames in {seconds:0.00} s  →  {mps:0.#} MPixel/s");
-                WriteCsvRow(csvPath, "CPU", CpuName(), precision, r, frames, seconds, mps);
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"  run {r} failed: {ex.GetType().Name}: {ex.Message}");
-            }
-        }
+            var (_, seconds, frames) = useFloat
+                ? Mandelbrot.BenchmarkCpuFloat(
+                    BenchmarkStandard.CenterX, BenchmarkStandard.CenterY, BenchmarkStandard.Scale,
+                    BenchmarkStandard.Width, BenchmarkStandard.Height, BenchmarkStandard.MaxIter,
+                    BenchmarkStandard.Aa, budget, null, CancellationToken.None)
+                : Mandelbrot.BenchmarkCpu(
+                    BenchmarkStandard.CenterX, BenchmarkStandard.CenterY, BenchmarkStandard.Scale,
+                    BenchmarkStandard.Width, BenchmarkStandard.Height, BenchmarkStandard.MaxIter,
+                    BenchmarkStandard.Aa, budget, null, CancellationToken.None);
+            return (frames, seconds);
+        });
 
         Console.WriteLine();
         Console.WriteLine($"=== Summary (best, MPixel/s): {CpuName()}: {best:0.#} ===");

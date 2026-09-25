@@ -12,12 +12,12 @@ Project root: `MandelC#/`. Code: `MandelC#/MandelbrotViewer/`.
 
 All code (comments, identifiers, enum names), UI strings, documentation
 (AGENTS.md, TODO.md, CHANGELOG.md, SPECS.md), and commit messages
-must be written in **English** from now on.
+must be written in **English**.
 
 ## Toolchain .NET
 
-- `dotnet` resolves via PATH (user-level install under `~\.dotnet`, SDK 8.0).
-- If PATH ever loses it, use the full path (always quote it, the path contains `#`).
+- `dotnet` resolves via PATH (this machine: `C:\Program Files\dotnet`, SDK 8.0).
+- If PATH ever loses it, use the full install path (always quote it, the project path contains `#`).
   `& "$env:USERPROFILE\.dotnet\dotnet.exe" <command>`
 - Target: `net8.0-windows` + `UseWindowsForms`. Windows only.
 

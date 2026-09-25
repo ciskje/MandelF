@@ -75,7 +75,6 @@ internal static class GpuMandelbrot
     // uploaded once per palette/iteration combination and reused across frames.
     private static ulong _dLut;
     private static Palette _lutPalette = (Palette)(-1);
-    private static int _lutMaxIter = -1;
     // Explicit wave allocation: tuned 2D threads-per-block per precision
     // (default 32x8 = 256 threads = 8 warps; refined by the init probe, see TuneBlocks).
     private static int _blockFloatX = 32;
@@ -85,7 +84,11 @@ internal static class GpuMandelbrot
 
     public static bool IsReady => _ctx != IntPtr.Zero;
     public static string DeviceName { get; private set; } = "";
-    public static string DeviceShortName => DeviceName.Replace("NVIDIA GeForce ", "");
+    public static string DeviceShortName => Shorten(DeviceName);
+
+    // Compressed device name for UI/history: strips vendor prefix and "(TM)".
+    internal static string Shorten(string fullName) =>
+        fullName.Replace("NVIDIA GeForce ", "").Replace("(TM)", "").Trim();
     // Reason of the last failed initialization (diagnostic).
     public static string LastError { get; private set; } = "";
     // Device summary with the chosen launch layout (diagnostic).
@@ -411,7 +414,6 @@ internal static class GpuMandelbrot
             _renderPixels = null;
             _renderCount = 0;
             _lutPalette = (Palette)(-1);
-            _lutMaxIter = -1;
             if (_module != IntPtr.Zero)
             {
                 try
@@ -449,12 +451,11 @@ internal static class GpuMandelbrot
     // Uploads once per combination; frames reuse it. Must run under RenderGate
     // with the context current.
     // Param palette (Palette): Input: palette baked into the table.
-    // Param maxIter (int): Input: iteration budget baked into the table normalization.
-    private static void EnsureLut(Palette palette, int maxIter)
+    private static void EnsureLut(Palette palette)
     {
-        if (_dLut != 0 && _lutPalette == palette && _lutMaxIter == maxIter)
+        if (_dLut != 0 && _lutPalette == palette)
             return;
-        int[] host = PaletteColors.GetLut(palette, maxIter);
+        int[] host = PaletteColors.GetLut(palette);
         if (_dLut != 0)
         {
             CudaNative.Free(_dLut);
@@ -463,7 +464,6 @@ internal static class GpuMandelbrot
         _dLut = CudaNative.Alloc((ulong)host.Length * 4);
         CudaNative.CopyHtoD(_dLut, host);
         _lutPalette = palette;
-        _lutMaxIter = maxIter;
     }
 
     // Computes the frame on the GPU (kernel launch + copy back to RAM).
@@ -494,7 +494,7 @@ internal static class GpuMandelbrot
             double topY = centerY - (bigH * 0.5) * pixelSize;
             var view = new GpuViewParams(centerX, centerY, pixelSize, topY, bmp.Width, bmp.Height, maxIter, k,
                 julia ? 1 : 0, juliaCx, juliaCy, fullWidth, fullHeight, offsetX, offsetY);
-            EnsureLut(palette, maxIter);
+            EnsureLut(palette);
             int count = bmp.Width * bmp.Height;
             if (_renderCount != count)
             {

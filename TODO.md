@@ -1,4 +1,10 @@
 ﻿# TODO — MandelC#
+- [ ] Commit + push + GitHub v2.22.8 release (exe asset, README/SPECS update) — pending
+- [x] Add setup.bat launcher (fresh publish + ISCC compile of the .iss) — completed (verified full run: publish + ISCC OK, installer rebuilt, no version bump)
+- [x] run.bat fails (hardcoded user-level dotnet path) — completed (PATH first, user path fallback; also fixed `)` in echo breaking the if-block, CRLF endings, same fallback in publish.ps1, AGENTS.md toolchain line; verified `run.bat --diag-gpu`, no version bump)
+- [x] Apply ponytail-audit findings (dead code, shared benchmark loops, native tile blit, wrapper removal) — completed (v2.22.8, SPEC_FOR_LLM.md kept — distinct purpose, see SPECS.md)
+- [x] Full-repo ponytail audit (over-engineering pass, no code change) — completed (findings listed in chat, no version bump)
+- [x] Source code review (ponytail over-engineering pass, no code change) — completed (findings listed in chat, no version bump)
 - [x] Create Windows installer (Inno Setup) for the program — completed (installer `MandelbrotViewer-Setup-2.22.7.exe` + `.iss` in project root, no code change, no version bump)
 - [x] Rewrite SPEC_FOR_LLM_PLATFORM_AGNOSTIC.md fully platform-agnostic (no OS/toolkit/GPU backend names; implementation choices delegated to the LLM) — completed (docs only, no version bump)
 Every user request becomes an entry here. Status: `pending` → `completed`/`cancelled`.

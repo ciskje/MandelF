@@ -7,7 +7,7 @@ public static class AppVersion
 {
     public const int Major = 2;
     public const int Minor = 22;
-    public const int Patch = 7;
+    public const int Patch = 8;
 
     public static string Full => $"{Major}.{Minor}.{Patch}";
 

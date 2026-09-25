@@ -4,16 +4,8 @@ namespace MandelbrotViewer;
 // iterations per second of the selected engine (with CPU fallback).
 public partial class BenchmarkForm : Form
 {
-    // Standard test parameters (shared, so results are comparable):
-    // they live in BenchmarkStandard, also shared with the --bench-dx CLI.
-    private const int BW = BenchmarkStandard.Width;
-    private const int BH = BenchmarkStandard.Height;
-    private static int BMaxIter => BenchmarkStandard.MaxIter;
-    private const int BAA = BenchmarkStandard.Aa; // the test runs at AA 1x
-    private const double BCx = BenchmarkStandard.CenterX;
-    private const double BCy = BenchmarkStandard.CenterY;
-    private const double BScale = BenchmarkStandard.Scale;
-    private static readonly TimeSpan Budget = BenchmarkStandard.Budget;
+    // Standard test parameters live in BenchmarkStandard (shared with the
+    // --bench-dx CLI), used directly so results stay comparable.
 
     private readonly RenderEngine _engine;
     private readonly bool _useCuda;
@@ -48,9 +40,9 @@ public partial class BenchmarkForm : Form
         };
         string precision = _useCuda ? $"CUDA {(_useDouble ? "64-bit" : "32-bit")}" : _useDirectX ? "DirectX float" : $"CPU {(_useDouble ? "64-bit" : "32-bit")}";
         lblInfo.Text = $"Engine: {RenderEngineInfo.DisplayName(_engine)}{note}\n" +
-            $"Zone {BW}x{BH} {BAA}x AA = {BW * BAA}x{BH * BAA} elementary samples without averaging, " +
-            $"{BMaxIter} max iterations, scale {BScale}, precision {precision} — " +
-            $"minimum duration {Budget.TotalSeconds:F0} seconds (DirectX offscreen, no Present).";
+            $"Zone {BenchmarkStandard.Width}x{BenchmarkStandard.Height} {BenchmarkStandard.Aa}x AA = {BenchmarkStandard.Width * BenchmarkStandard.Aa}x{BenchmarkStandard.Height * BenchmarkStandard.Aa} elementary samples without averaging, " +
+            $"{BenchmarkStandard.MaxIter} max iterations, scale {BenchmarkStandard.Scale}, precision {precision} — " +
+            $"minimum duration {BenchmarkStandard.Budget.TotalSeconds:F0} seconds (DirectX offscreen, no Present).";
         lblResult.Text = "—";
         chartPanel.Invalidate();
     }
@@ -72,8 +64,6 @@ public partial class BenchmarkForm : Form
         _ => $"{perSec:F0} pixel/s",
     };
 
-    private double PixelsPerSecond(int frames, double seconds) =>
-        BenchmarkStandard.PixelsPerSecond(frames, seconds);
 
     private async void BtnStart_Click(object? sender, EventArgs e)
     {
@@ -96,7 +86,7 @@ public partial class BenchmarkForm : Form
             try
             {
                 var preview = await Task.Run(
-                    () => DxMandelbrot.RenderPreviewToBitmap(BCx, BCy, BScale, BW, BH, BMaxIter, 1, Palette.Fire),
+                    () => DxMandelbrot.RenderPreviewToBitmap(BenchmarkStandard.CenterX, BenchmarkStandard.CenterY, BenchmarkStandard.Scale, BenchmarkStandard.Width, BenchmarkStandard.Height, BenchmarkStandard.MaxIter, 1, Palette.Fire),
                     _cts.Token);
                 if (preview != null && !IsDisposed)
                 {
@@ -145,21 +135,21 @@ public partial class BenchmarkForm : Form
             {
                 ( _, seconds, frames) = await Task.Run(() =>
                     _useCuda
-                        ? GpuMandelbrot.BenchmarkGpu(BCx, BCy, BScale, BW, BH, BMaxIter, BAA, _useDouble, Budget, progress, _cts.Token)
+                        ? GpuMandelbrot.BenchmarkGpu(BenchmarkStandard.CenterX, BenchmarkStandard.CenterY, BenchmarkStandard.Scale, BenchmarkStandard.Width, BenchmarkStandard.Height, BenchmarkStandard.MaxIter, BenchmarkStandard.Aa, _useDouble, BenchmarkStandard.Budget, progress, _cts.Token)
                         : _useDouble
-                            ? Mandelbrot.BenchmarkCpu(BCx, BCy, BScale, BW, BH, BMaxIter, BAA, Budget, progress, _cts.Token)
-                            : Mandelbrot.BenchmarkCpuFloat(BCx, BCy, BScale, BW, BH, BMaxIter, BAA, Budget, progress, _cts.Token),
+                            ? Mandelbrot.BenchmarkCpu(BenchmarkStandard.CenterX, BenchmarkStandard.CenterY, BenchmarkStandard.Scale, BenchmarkStandard.Width, BenchmarkStandard.Height, BenchmarkStandard.MaxIter, BenchmarkStandard.Aa, BenchmarkStandard.Budget, progress, _cts.Token)
+                            : Mandelbrot.BenchmarkCpuFloat(BenchmarkStandard.CenterX, BenchmarkStandard.CenterY, BenchmarkStandard.Scale, BenchmarkStandard.Width, BenchmarkStandard.Height, BenchmarkStandard.MaxIter, BenchmarkStandard.Aa, BenchmarkStandard.Budget, progress, _cts.Token),
                     _cts.Token);
             }
 
-            _measuredMpixel = PixelsPerSecond(frames, seconds) / 1e6;
+            _measuredMpixel = BenchmarkStandard.PixelsPerSecond(frames, seconds) / 1e6;
             _lastFrames = frames;
             _lastSeconds = seconds;
             btnCsv.Enabled = true;
             lblResult.Text = FormatPixels(_measuredMpixel * 1e6);
             lblDetail.Text = _useDirectX
-                ? $"{frames} frame ({frames / seconds:F1} frame/s) {BW}x{BH} AA{BAA}x in {seconds:F1} s on {_deviceLabel}"
-                : $"{frames} frame {BW}x{BH} AA{BAA}x in {seconds:F1} s on {_deviceLabel}";
+                ? $"{frames} frame ({frames / seconds:F1} frame/s) {BenchmarkStandard.Width}x{BenchmarkStandard.Height} AA{BenchmarkStandard.Aa}x in {seconds:F1} s on {_deviceLabel}"
+                : $"{frames} frame {BenchmarkStandard.Width}x{BenchmarkStandard.Height} AA{BenchmarkStandard.Aa}x in {seconds:F1} s on {_deviceLabel}";
             lblLive.Text = "";
             chartPanel.Invalidate();
         }
@@ -187,9 +177,9 @@ public partial class BenchmarkForm : Form
 
     private void UpdateProgress(BenchmarkProgress progress)
     {
-        double fraction = Math.Clamp(progress.ElapsedSeconds / Budget.TotalSeconds, 0.0, 1.0);
+        double fraction = Math.Clamp(progress.ElapsedSeconds / BenchmarkStandard.Budget.TotalSeconds, 0.0, 1.0);
         string liveRate = progress.ElapsedSeconds > 0.2
-            ? FormatPixels(PixelsPerSecond(progress.Frames, progress.ElapsedSeconds))
+            ? FormatPixels(BenchmarkStandard.PixelsPerSecond(progress.Frames, progress.ElapsedSeconds))
             : "—";
         lblLive.Text = $"{fraction * 100:0}%  |  {liveRate}";
         lblLive.Refresh();
@@ -306,13 +296,13 @@ public partial class BenchmarkForm : Form
     // zone, as DirectX already does with the first frame on the swapchain.
     private Bitmap? RenderBenchmarkPreview(CancellationToken ct)
     {
-        var bmp = new Bitmap(BW, BH, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
+        var bmp = new Bitmap(BenchmarkStandard.Width, BenchmarkStandard.Height, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
         try
         {
             if (_useCuda)
-                GpuMandelbrot.Render(bmp, BCx, BCy, BScale, BMaxIter, Palette.Fire, 1, _useDouble, ct);
+                GpuMandelbrot.Render(bmp, BenchmarkStandard.CenterX, BenchmarkStandard.CenterY, BenchmarkStandard.Scale, BenchmarkStandard.MaxIter, Palette.Fire, 1, _useDouble, ct);
             else
-                Mandelbrot.Render(bmp, BCx, BCy, BScale, BMaxIter, Palette.Fire, 1, ct);
+                Mandelbrot.Render(bmp, BenchmarkStandard.CenterX, BenchmarkStandard.CenterY, BenchmarkStandard.Scale, BenchmarkStandard.MaxIter, Palette.Fire, 1, ct);
             return bmp;
         }
         catch
@@ -330,14 +320,14 @@ public partial class BenchmarkForm : Form
     // do not skew cards without a monitor.
     private static async Task<(double Seconds, int Frames)> BenchmarkDirectX(IProgress<BenchmarkProgress> progress, CancellationToken ct)
     {
-        int gridW = BW * BAA;
-        int gridH = BH * BAA;
+        int gridW = BenchmarkStandard.Width * BenchmarkStandard.Aa;
+        int gridH = BenchmarkStandard.Height * BenchmarkStandard.Aa;
         DxMandelbrot.BeginBenchmarkOffscreen(gridW, gridH);
         try
         {
             double lastReport = 0;
             var (seconds, frames) = await Task.Run(() =>
-                DxMandelbrot.RunBenchmarkFramesOffscreen(BCx, BCy, BScale, gridW, gridH, BMaxIter, Budget,
+                DxMandelbrot.RunBenchmarkFramesOffscreen(BenchmarkStandard.CenterX, BenchmarkStandard.CenterY, BenchmarkStandard.Scale, gridW, gridH, BenchmarkStandard.MaxIter, BenchmarkStandard.Budget,
                     (f, elapsed) =>
                     {
                         if (elapsed - lastReport >= BenchmarkProgress.ReportInterval.TotalSeconds)

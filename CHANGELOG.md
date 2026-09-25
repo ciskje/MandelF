@@ -4,6 +4,27 @@ Versioning `X.Y.Z` (if `Z` is 0, short notation `X.Y`). Bump rules in
 `AGENTS.md`. The version is shown in the window title. Entries are grouped
 by minor series below, newest first.
 ## v2.22.x — Native CUDA backend
+- **v2.22.8** — Ponytail-audit cleanup, no behavior change: deleted dead
+  `Mandelbrot.ColorFromEscape` + `PaletteColors.ColorFor` (zero callers),
+  dropped the ignored `maxIter` from the palette-table cache key (`GetLut` /
+  both `EnsureLut`, fields removed), merged the CPU double/float benchmark
+  frame loops into one `RunCpuBenchmark` helper (scalar bodies extracted to
+  row functions), merged the three CLI trial loops into `Diagnostics.RunTrials`,
+  replaced hand-rolled `CopyTile` (LockBits + MemoryCopy) with
+  `Graphics.DrawImageUnscaled`, removed alias/wrapper one-liners (BenchmarkForm
+  `BW…Budget` constants, `PixelsPerSecond` forwarder, `EffectiveAa`, stored
+  `_useCpu` flag → property, preview overload forwarder → optional params,
+  triple short-name strip → `GpuMandelbrot.Shorten`). Kept `SPEC_FOR_LLM.md`:
+  audit-flagged docs duplication rejected, it is the Windows-specific contract
+  doc with a distinct purpose from the platform-agnostic spec. Verified: clean
+  build (0 warnings), `--diag-gpu` CUDA render OK, `--bench-cpu float`
+  2.4 MPixel/s (9900X). Launcher fixes: `run.bat` uses PATH dotnet with
+  user-path fallback (was hardcoded), new `setup.bat` (fresh publish +
+  ISCC compile), same fallback in `publish.ps1`, AGENTS.md toolchain line.
+  Files: `Mandelbrot.cs`, `Palette.cs`, `Diagnostics.cs`, `DxMandelbrot.cs`,
+  `GpuMandelbrot.cs`, `BenchmarkForm.cs`, `ExportForm.cs`, `ZoomVideoForm.cs`,
+  `run.bat`, `setup.bat`, `publish.ps1`, `AGENTS.md`,
+  `TODO.md`, `SPECS.md`, `CHANGELOG.md`, `AppVersion.cs`, `.csproj`.
 - **v2.22.7** — DirectX 5070 Ti history bar 322.4 → 338 (remeasured best of
   3, Release: 338.5; 4070 SUPER bar kept at 262.4, remeasured 262.2).
   Files: `BenchmarkForm.cs`, `TODO.md`, `CHANGELOG.md`, `AppVersion.cs`,

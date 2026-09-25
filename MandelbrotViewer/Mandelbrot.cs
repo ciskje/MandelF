@@ -128,7 +128,7 @@ public static class Mandelbrot
         int samples = k * k;
         // Fast path data, hoisted out of the per-subsample loop: the palette table
         // removes Pow + stop search, invMaxIter removes the division.
-        int[] lut = PaletteColors.GetLut(palette, maxIter);
+        int[] lut = PaletteColors.GetLut(palette);
         double invMaxIter = 1.0 / Math.Max(1, maxIter);
         bool isMandelbrot = !julia;
         var args = new TileArgs(w, h, k, samples, maxIter, offsetX, offsetY,
@@ -678,27 +678,105 @@ public static class Mandelbrot
         return dx * dx + py * py <= 0.0625;
     }
 
-    // Color from iterations and palette, legacy exact path (Pow + stop search).
-    // Kept for reference and compatibility; the render hot loop now uses the
-    // fast PaletteColors LUT. The smooth
-    // (log/log) formula and the palette mapping must stay aligned with
-    // the CUDA kernels (Cuda/mandelbrot.cu) and the HLSL shader (DxMandelbrot.cs).
-    // Called once per subsample; the caller averages the channels.
-    // Param iter (int): Input: raw escape-iteration count of the subsample
-    //   (0 … maxIter). Values ≥ maxIter mean interior.
-    // Param mod2 (double): Input: squared modulus |z|² at escape (≥ 4 for exterior points;
-    //   clamped inside). Feeds the fractional log/log smoothing term.
-    // Param maxIter (int): Input: iteration budget of the view; normalizes the smoothed
-    //   value before the palette lookup.
-    // Param palette (Palette): Input: color palette for exterior points.
-    // Returns (int): Output: packed 32-bit ARGB color (alpha 0xFF). Interior (iter ≥ maxIter)
-    //   returns opaque black; exterior returns the smoothed, gamma-mapped palette color.
-    internal static int ColorFromEscape(int iter, double mod2, int maxIter, Palette palette)
+    // Shared frame loop for the CPU benchmarks: repeats timed frames until the
+    // budget expires, rows run in parallel through the given row function.
+    private static (long TotalIters, double Seconds, int Frames) RunCpuBenchmark(
+        int bigH, TimeSpan budget, IProgress<BenchmarkProgress>? progress, CancellationToken ct,
+        Func<int, long> row)
     {
-        if (iter >= maxIter)
-            return unchecked((int)0xFF000000); // inside -> black
-        double smoothIterations = iter + 1.0 - Math.Log(Math.Log(Math.Sqrt(Math.Max(mod2, 4.0)))) / Math.Log(2.0);
-        return PaletteColors.ColorFor(smoothIterations, maxIter, palette);
+        var sw = System.Diagnostics.Stopwatch.StartNew();
+        long total = 0;
+        int frames = 0;
+        bool first = true;
+        TimeSpan lastReport = TimeSpan.Zero;
+        var options = new ParallelOptions { CancellationToken = ct };
+        var partitioner = Partitioner.Create(0, bigH, RenderRowChunk(bigH));
+        while (sw.Elapsed < budget)
+        {
+            ct.ThrowIfCancellationRequested();
+            long frame = 0;
+            object gate = new();
+            Parallel.ForEach(partitioner, options, () => 0L,
+                (range, state, local) =>
+                {
+                    for (int y = range.Item1; y < range.Item2; y++)
+                        local += row(y);
+                    return local;
+                },
+                local => { lock (gate) frame += local; });
+            total += frame;
+            frames++;
+            if (first || sw.Elapsed - lastReport >= BenchmarkProgress.ReportInterval)
+            {
+                progress?.Report(new BenchmarkProgress(sw.Elapsed.TotalSeconds, total, frames));
+                lastReport = sw.Elapsed;
+                first = false;
+            }
+        }
+        progress?.Report(new BenchmarkProgress(sw.Elapsed.TotalSeconds, total, frames));
+        return (total, sw.Elapsed.TotalSeconds, frames);
+    }
+
+    // Scalar benchmark row, double precision: non-SIMD fallback (same workload
+    // and early-outs as the vector core).
+    private static long BenchmarkRowScalarDouble(int y, double centerX, double topY, double pixelSize, int bigW, int maxIter)
+    {
+        double cy = topY + y * pixelSize;
+        long sum = 0;
+        for (int x = 0; x < bigW; x++)
+        {
+            double cx = centerX + (x - bigW * 0.5) * pixelSize;
+            // Cardioid + bulb early-out: known interior counts maxIter
+            // without running the escape loop (same rule as the render path).
+            if (IsInteriorBulb(cx, cy))
+            {
+                sum += maxIter;
+                continue;
+            }
+            double zx = 0, zy = 0, zx2 = 0, zy2 = 0;
+            int iter = 0;
+            while (iter < maxIter && zx2 + zy2 <= 4.0)
+            {
+                zy = 2.0 * zx * zy + cy;
+                zx = zx2 - zy2 + cx;
+                zx2 = zx * zx;
+                zy2 = zy * zy;
+                iter++;
+            }
+            sum += iter;
+        }
+        return sum;
+    }
+
+    // Scalar benchmark row, single precision: float escape loop with the shared
+    // double bulb classification (mirrors the production float render path).
+    private static long BenchmarkRowScalarFloat(int y, double centerX, double topY, double pixelSize, int bigW, int maxIter)
+    {
+        double cy = topY + y * pixelSize;
+        float fcy = (float)cy;
+        long sum = 0;
+        for (int x = 0; x < bigW; x++)
+        {
+            double dx = centerX + (x - bigW * 0.5) * pixelSize;
+            if (IsInteriorBulb(dx, cy))
+            {
+                sum += maxIter;
+                continue;
+            }
+            float cx = (float)dx;
+            float zx = 0, zy = 0, zx2 = 0, zy2 = 0;
+            int iter = 0;
+            while (iter < maxIter && zx2 + zy2 <= 4f)
+            {
+                zy = 2f * zx * zy + fcy;
+                zx = zx2 - zy2 + cx;
+                zx2 = zx * zx;
+                zy2 = zy * zy;
+                iter++;
+            }
+            sum += iter;
+        }
+        return sum;
     }
 
     // Vector benchmark row: full lane blocks plus a scalar tail.
@@ -856,82 +934,12 @@ public static class Mandelbrot
         double pixelSize = scale / bigW;
         double topY = centerY - (bigH * 0.5) * pixelSize;
 
-        var sw = System.Diagnostics.Stopwatch.StartNew();
-        long total = 0;
-        int frames = 0;
-        bool first = true;
-        TimeSpan lastReport = TimeSpan.Zero;
         // The production CPU engine renders through SIMD vectors, so the benchmark
         // measures the same vector core (same workload, same early-outs).
-        bool useVector = Vector.IsHardwareAccelerated;
-
-        while (sw.Elapsed < budget)
-        {
-            ct.ThrowIfCancellationRequested();
-            long frame = 0;
-            object gate = new();
-            var options = new ParallelOptions { CancellationToken = ct };
-            var partitioner = Partitioner.Create(0, bigH, RenderRowChunk(bigH));
-
-            if (!useVector)
-            {
-                Parallel.ForEach(partitioner, options, () => 0L,
-                    (range, state, local) =>
-                    {
-                        for (int y = range.Item1; y < range.Item2; y++)
-                        {
-                            double cy = topY + y * pixelSize;
-                            for (int x = 0; x < bigW; x++)
-                            {
-                                double cx = centerX + (x - bigW * 0.5) * pixelSize;
-                                // Cardioid + bulb early-out: known interior counts maxIter
-                                // without running the escape loop (same rule as the render path).
-                                if (IsInteriorBulb(cx, cy))
-                                {
-                                    local += maxIter;
-                                    continue;
-                                }
-                                double zx = 0, zy = 0, zx2 = 0, zy2 = 0;
-                                int iter = 0;
-                                while (iter < maxIter && zx2 + zy2 <= 4.0)
-                                {
-                                    zy = 2.0 * zx * zy + cy;
-                                    zx = zx2 - zy2 + cx;
-                                    zx2 = zx * zx;
-                                    zy2 = zy * zy;
-                                    iter++;
-                                }
-                                local += iter;
-                            }
-                        }
-                        return local;
-                    },
-                    local => { lock (gate) frame += local; });
-            }
-            else
-            {
-                Parallel.ForEach(partitioner, options, () => 0L,
-                    (range, state, local) =>
-                    {
-                        for (int y = range.Item1; y < range.Item2; y++)
-                            local += BenchmarkRowVector(y, centerX, topY, pixelSize, bigW, maxIter);
-                        return local;
-                    },
-                    local => { lock (gate) frame += local; });
-            }
-
-            total += frame;
-            frames++;
-            if (first || sw.Elapsed - lastReport >= BenchmarkProgress.ReportInterval)
-            {
-                progress?.Report(new BenchmarkProgress(sw.Elapsed.TotalSeconds, total, frames));
-                lastReport = sw.Elapsed;
-                first = false;
-            }
-        }
-
-        progress?.Report(new BenchmarkProgress(sw.Elapsed.TotalSeconds, total, frames));
-        return (total, sw.Elapsed.TotalSeconds, frames);
+        Func<int, long> row = Vector.IsHardwareAccelerated
+            ? y => BenchmarkRowVector(y, centerX, topY, pixelSize, bigW, maxIter)
+            : y => BenchmarkRowScalarDouble(y, centerX, topY, pixelSize, bigW, maxIter);
+        return RunCpuBenchmark(bigH, budget, progress, ct, row);
     }
 
     // CPU benchmark, single precision: same standardized workload as BenchmarkCpu
@@ -961,80 +969,10 @@ public static class Mandelbrot
         double pixelSize = scale / bigW;
         double topY = centerY - (bigH * 0.5) * pixelSize;
 
-        var sw = System.Diagnostics.Stopwatch.StartNew();
-        long total = 0;
-        int frames = 0;
-        bool first = true;
-        TimeSpan lastReport = TimeSpan.Zero;
-        bool useVector = Vector.IsHardwareAccelerated;
-
-        while (sw.Elapsed < budget)
-        {
-            ct.ThrowIfCancellationRequested();
-            long frame = 0;
-            object gate = new();
-            var options = new ParallelOptions { CancellationToken = ct };
-            var partitioner = Partitioner.Create(0, bigH, RenderRowChunk(bigH));
-
-            if (!useVector)
-            {
-                Parallel.ForEach(partitioner, options, () => 0L,
-                    (range, state, local) =>
-                    {
-                        for (int y = range.Item1; y < range.Item2; y++)
-                        {
-                            double cy = topY + y * pixelSize;
-                            float fcy = (float)cy;
-                            for (int x = 0; x < bigW; x++)
-                            {
-                                double dx = centerX + (x - bigW * 0.5) * pixelSize;
-                                if (IsInteriorBulb(dx, cy))
-                                {
-                                    local += maxIter;
-                                    continue;
-                                }
-                                float cx = (float)dx;
-                                float zx = 0, zy = 0, zx2 = 0, zy2 = 0;
-                                int iter = 0;
-                                while (iter < maxIter && zx2 + zy2 <= 4f)
-                                {
-                                    zy = 2f * zx * zy + fcy;
-                                    zx = zx2 - zy2 + cx;
-                                    zx2 = zx * zx;
-                                    zy2 = zy * zy;
-                                    iter++;
-                                }
-                                local += iter;
-                            }
-                        }
-                        return local;
-                    },
-                    local => { lock (gate) frame += local; });
-            }
-            else
-            {
-                Parallel.ForEach(partitioner, options, () => 0L,
-                    (range, state, local) =>
-                    {
-                        for (int y = range.Item1; y < range.Item2; y++)
-                            local += BenchmarkRowFloat(y, centerX, topY, pixelSize, bigW, maxIter);
-                        return local;
-                    },
-                    local => { lock (gate) frame += local; });
-            }
-
-            total += frame;
-            frames++;
-            if (first || sw.Elapsed - lastReport >= BenchmarkProgress.ReportInterval)
-            {
-                progress?.Report(new BenchmarkProgress(sw.Elapsed.TotalSeconds, total, frames));
-                lastReport = sw.Elapsed;
-                first = false;
-            }
-        }
-
-        progress?.Report(new BenchmarkProgress(sw.Elapsed.TotalSeconds, total, frames));
-        return (total, sw.Elapsed.TotalSeconds, frames);
+        Func<int, long> row = Vector.IsHardwareAccelerated
+            ? y => BenchmarkRowFloat(y, centerX, topY, pixelSize, bigW, maxIter)
+            : y => BenchmarkRowScalarFloat(y, centerX, topY, pixelSize, bigW, maxIter);
+        return RunCpuBenchmark(bigH, budget, progress, ct, row);
     }
 
     // Vector benchmark row, single precision: full lane blocks plus a scalar tail.

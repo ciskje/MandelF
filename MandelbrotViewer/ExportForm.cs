@@ -16,7 +16,6 @@ public partial class ExportForm : Form
     private readonly int _aa;
     private readonly bool _useCuda;
     private readonly bool _useDirectX;
-    private readonly bool _useCpu;
     private readonly bool _julia;
     private readonly double _jcx, _jcy;
     private readonly double _aspect;
@@ -41,10 +40,9 @@ public partial class ExportForm : Form
         _aa = Math.Max(1, aa);
         _useCuda = useCuda;
         _useDirectX = engine == RenderEngine.DirectX && DxMandelbrot.IsReady;
-        _useCpu = !_useCuda && !_useDirectX;
         radPrec32.Checked = !useDouble;
         radPrec64.Checked = useDouble;
-        rowPrec.Enabled = _useCuda || _useCpu; // precision matters for CUDA and CPU (DX = float)
+        rowPrec.Enabled = _useCuda || UseCpu; // precision matters for CUDA and CPU (DX = float)
         _julia = julia;
         _jcx = juliaCx;
         _jcy = juliaCy;
@@ -61,6 +59,9 @@ public partial class ExportForm : Form
     // Precision selected in this dialog (read on the UI thread; the render
     // worker receives a captured copy). Enabled with CUDA and CPU engines.
     private bool UseDouble => radPrec64.Checked;
+
+    // CPU engine is active when neither GPU engine is (no stored flag).
+    private bool UseCpu => !_useCuda && !_useDirectX;
 
     private void UpdateEngineLabel()
     {
@@ -237,26 +238,8 @@ public partial class ExportForm : Form
 
     private static void CopyTile(Bitmap source, Bitmap destination, int destinationX, int destinationY)
     {
-        var sourceRect = new Rectangle(0, 0, source.Width, source.Height);
-        var destinationRect = new Rectangle(destinationX, destinationY, source.Width, source.Height);
-        BitmapData sourceData = source.LockBits(sourceRect, ImageLockMode.ReadOnly, PixelFormat.Format32bppArgb);
-        BitmapData destinationData = destination.LockBits(destinationRect, ImageLockMode.WriteOnly, PixelFormat.Format32bppArgb);
-        try
-        {
-            int rowBytes = source.Width * 4;
-            unsafe
-            {
-                byte* src = (byte*)sourceData.Scan0;
-                byte* dst = (byte*)destinationData.Scan0;
-                for (int y = 0; y < source.Height; y++)
-                    Buffer.MemoryCopy(src + (long)y * sourceData.Stride, dst + (long)y * destinationData.Stride, rowBytes, rowBytes);
-            }
-        }
-        finally
-        {
-            destination.UnlockBits(destinationData);
-            source.UnlockBits(sourceData);
-        }
+        using var g = Graphics.FromImage(destination);
+        g.DrawImageUnscaled(source, destinationX, destinationY);
     }
 
     private void BtnClose_Click(object? sender, EventArgs e)
