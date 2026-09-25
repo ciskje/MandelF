@@ -50,7 +50,9 @@ Interactive Mandelbrot set viewer built with C# / WinForms (.NET 8, Windows only
 Download the latest self-contained Windows executable (v2.22.7:
 `MandelbrotViewer.exe`, ~155 MB, no .NET installation required) from the
 [GitHub Releases page](https://github.com/ciskje/MandelC/releases/latest).
-Extract and run it.
+Extract and run it. Alternatively use the Windows installer
+(`MandelbrotViewer-Setup-2.22.7.exe`, ~47 MB) from the same release:
+it installs to Program Files with Start-menu shortcuts and an uninstaller.
 
 ## Build & Run
 

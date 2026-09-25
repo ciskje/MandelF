@@ -3,5 +3,7 @@
 [Mm]andelbrotViewer/obj/
 # Publish self-contained (~150 MB), regenerable with dotnet publish
 published/
+# Inno Setup installer (regenerable with ISCC, attached to GitHub Release)
+MandelbrotViewer-Setup-*.exe
 # IDE user files
 *.user

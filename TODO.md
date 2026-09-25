@@ -1,5 +1,9 @@
 ﻿# TODO — MandelC#
+- [x] Create Windows installer (Inno Setup) for the program — completed (installer `MandelbrotViewer-Setup-2.22.7.exe` + `.iss` in project root, no code change, no version bump)
+- [x] Rewrite SPEC_FOR_LLM_PLATFORM_AGNOSTIC.md fully platform-agnostic (no OS/toolkit/GPU backend names; implementation choices delegated to the LLM) — completed (docs only, no version bump)
 Every user request becomes an entry here. Status: `pending` → `completed`/`cancelled`.
+- [x] Write SPEC_FOR_LLM_PLATFORM_AGNOSTIC.md: platform-agnostic version of the spec (Windows+macOS, GPU described as API-agnostic contract, no backend names) — completed (docs only, no version bump)
+- [x] Write SPEC_FOR_LLM.md: single self-contained English spec so an LLM can replicate the app, incl. acceptance checklist — completed (docs only, no version bump)
 - [x] Add Optimizations section to SPECS.md, split by DirectX/CUDA with benchmark-vs-interactive scope — completed (docs only, no version bump)
 - [x] v2.22.7 Update DirectX 5070 Ti history bar to 338 — completed
 - [x] v2.22.6 CUDA speed plan phase 3: render-kernel optimization — completed (render kernels on 2D grid, bit-identical; end-to-end CUDA f32 >= DX on all scenes incl. 1080p AA4; double render FP64-bound, CPU wins on GeForce, untouched; temp timing/diff harness removed after use)

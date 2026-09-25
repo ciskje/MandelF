@@ -220,10 +220,36 @@ The optional card or device argument selects one target; without it, available t
 
 ## Application Status
 
-The current application version is defined by `AppVersion` and the project file. Documentation is kept separate from release history, development tasks, generic questions, and repository workflow instructions.
+The current application version is defined by `AppVersion` and the project file.
+
+`SPEC_FOR_LLM.md` (project root) is a single self-contained replication
+specification: full architecture, all algorithms and constants, engine
+contracts (CPU/CUDA/DirectX, including the HLSL and CUDA kernel semantics),
+UI behavior, persistence schemas, and an acceptance checklist, written so an
+LLM can reproduce the application as faithfully as possible (docs only, no
+version bump).
+
+`SPEC_FOR_LLM_PLATFORM_AGNOSTIC.md` (project root) is the fully
+platform-agnostic variant: the same spec with **no reference to any
+particular platform** — no operating system, no UI toolkit, no GPU
+technology — and an explicit freedom-of-implementation clause (the
+destination LLM chooses target OS, UI toolkit, GPU API, and packaging; only
+the behavioral contracts, formulas, and constants bind). The GPU engine is
+described purely as an interface and behavior contract, and the acceptance
+checklist carries OS-agnostic portability expectations (docs only, no
+version bump). Documentation is kept separate from release history, development tasks, generic questions, and repository workflow instructions.
 
 Release v2.22.7 is published on GitHub with the self-contained
 `MandelbrotViewer.exe` asset; the README links to the latest release download.
+A Windows installer `MandelbrotViewer-Setup-2.22.7.exe` (~47 MB, Inno Setup,
+LZMA2, EN/IT wizard, admin scope, Start-menu + optional desktop shortcut,
+post-install launch option) is attached to the same GitHub release and built from a fresh `published\` self-contained
+build via `MandelbrotViewer-Setup-2.22.7.iss` (AppId
+`{B88299BB-C271-4C1A-90EC-D290CF499055}` — reuse it for upgrades);
+`*.pdb` excluded. Build note: the setup-generator script mangles `#` in
+`SetupIconFile` (`MandelC##`) and writes backslashes into the URL — fix both
+by hand, then compile with ISCC (`MSYS2_ARG_CONV_EXCL='*'` under Git Bash
+so `/O` is not path-mangled).
 
 v2.19.2 render notes: the CPU path colors through a cached 4096-entry palette
 table with linear interpolation (v2.19.3; output within 1 LSB of the exact
