@@ -1,5 +1,13 @@
 # QUESTIONS — MandelC
 
+- **Is pushing the same as publishing?** — answered. No. Pushing uploads
+  the git commits (source code) to GitHub: anyone cloning gets the new
+  code, but there is nothing ready to run. Publishing means building the
+  self-contained exe, attaching it to the GitHub Release of the current
+  version, and pointing the README download section at it — that is what
+  end users download. This is why the repo can be at v2.24.2 (pushed)
+  while the latest release asset is still v2.24.1.
+
 - **What the .pdb file is for** — answered. `.pdb` (program database) holds
   the debug symbols: the mapping from compiled code back to source files,
   line numbers, and symbol names. The program runs fine without it, but with
