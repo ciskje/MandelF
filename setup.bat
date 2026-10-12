@@ -3,7 +3,7 @@ setlocal
 
 pushd "%~dp0"
 if "%~1"=="" (
-    set "ISS=MandelbrotViewer-Setup-2.22.8.iss"
+    set "ISS=MandelbrotViewer-Setup.iss"
 ) else (
     set "ISS=%~1"
 )

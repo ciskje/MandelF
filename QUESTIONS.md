@@ -1,5 +1,13 @@
 # QUESTIONS — MandelC
 
+- **Difference between intent and specification** — answered. The intent is
+  the *why*: the goal or problem behind a request (e.g. "I want to know the
+  program really uses AVX512"). The specification is the *what*: the precise,
+  verifiable description of behavior that fulfills it (e.g. "`Mandelbrot.cs`
+  exposes `CpuSimdLabel`; the status bar shows `CPU-double AVX512`"). Intent
+  guides decisions, specification binds the implementation — this is why
+  `SPECS.md` records contracts and acceptance criteria, not motivations.
+
 - **How AVX512 helps CPU-double** — answered. Each AVX512 instruction
   processes 8 doubles at once vs 4 with AVX2 (256-bit), so the escape loop
   (`EscapeBlockDouble512`, `Mandelbrot.cs`) retires twice the flops per
