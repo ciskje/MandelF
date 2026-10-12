@@ -14,10 +14,3 @@ if (Test-Path $exe) {
 } else {
     throw "published\MandelbrotViewer.exe not found after publish"
 }
-
-# Rust SIMD engine (mandel-ffi.dll, built from MandelR): ships next to the
-# single-file exe; DllImport probes the app dir, no registration needed.
-$ffi = Join-Path $env:LOCALAPPDATA 'MandelR\target\x86_64-pc-windows-gnu\release\mandel_ffi.dll'
-if (!(Test-Path $ffi)) { throw "mandel_ffi.dll not found: run cargo build --release -p mandel-ffi (see MandelR/crates/mandel-ffi/README.md)" }
-Copy-Item $ffi (Join-Path $root 'published\mandel_ffi.dll') -Force
-Write-Host "OK: published\mandel_ffi.dll"

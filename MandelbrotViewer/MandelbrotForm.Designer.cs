@@ -26,7 +26,6 @@
     private RadioButton radPrec32 = null!;
     private RadioButton radPrec64 = null!;
     private RadioButton radioCpu = null!;
-    private RadioButton radioRust = null!;
     private RadioButton radioCuda = null!;
     private RadioButton radioDx = null!;
     private FlowLayoutPanel enginePanel = null!;
@@ -88,7 +87,6 @@
         this.radPrec32 = new RadioButton();
         this.radPrec64 = new RadioButton();
         this.radioCpu = new RadioButton();
-        this.radioRust = new RadioButton();
         this.radioCuda = new RadioButton();
         this.radioDx = new RadioButton();
         this.enginePanel = new FlowLayoutPanel();
@@ -243,7 +241,6 @@
         this.enginePanel.WrapContents = false;
         this.enginePanel.Margin = new Padding(0);
         this.enginePanel.Controls.Add(this.radioCpu);
-        this.enginePanel.Controls.Add(this.radioRust);
         this.enginePanel.Controls.Add(this.radioCuda);
         this.enginePanel.Controls.Add(this.radioDx);
 
@@ -306,12 +303,6 @@
         this.radioCuda.Text = "CUDA";
         this.radioCuda.Enabled = false; // roadmap v1.4
         this.radioCuda.CheckedChanged += new EventHandler(this.EngineRadio_CheckedChanged);
-
-        // radioRust
-        this.radioRust.Anchor = AnchorStyles.Left;
-        this.radioRust.AutoSize = true;
-        this.radioRust.Text = "Rust";
-        this.radioRust.CheckedChanged += new EventHandler(this.EngineRadio_CheckedChanged);
 
         // radioDx
         this.radioDx.Anchor = AnchorStyles.Left;
@@ -437,7 +428,6 @@
         this.toolTip.SetToolTip(this.radPrec32, "CPU/CUDA precision 32-bit (float): faster, less precise. Ignored with DirectX.");
         this.toolTip.SetToolTip(this.radPrec64, "CPU/CUDA precision 64-bit (double): more precise, slower. Ignored with DirectX.");
         this.toolTip.SetToolTip(this.radioCpu, "CPU multicore engine (always available)");
-        this.toolTip.SetToolTip(this.radioRust, "Rust SIMD engine via mandel_ffi.dll (float/double, same formulas)");
         this.toolTip.SetToolTip(this.radioCuda, "CUDA engine: NVIDIA GPU via native kernels (float/double)");
         this.toolTip.SetToolTip(this.radioDx, "DirectX engine: real-time GPU (float)");
         // menu items are ToolStripItem: use the ToolTipText property

@@ -1,5 +1,18 @@
 # QUESTIONS — MandelC
 
+- **How AVX512 helps CPU-double** — answered. Each AVX512 instruction
+  processes 8 doubles at once vs 4 with AVX2 (256-bit), so the escape loop
+  (`EscapeBlockDouble512`, `Mandelbrot.cs`) retires twice the flops per
+  instruction. The loop is compute-bound at deep zoom (10915 iterations of
+  multiply/add/compare in registers, negligible memory traffic), and Zen5
+  executes 512-bit ops at full rate with no downclocking (unlike Intel
+  client chips), so wider lanes translate almost directly into throughput.
+  Measured +42% (9.7 → 13.8 MPixel/s), not +100%, because a lane block
+  finishes when its slowest lane escapes (wider blocks waste more work on
+  mixed rows — divergence), and the scalar sections are unchanged
+  (cardioid/bulb test, coordinate setup, smooth-coloring log/pow + LUT,
+  pixel averaging, bitmap writes, thread scheduling).
+
 Generic questions and answers that do not concern the program source.
 Moved out of `TODO.md` so the todo stays strictly about the program.
 Program-related analysis (AA dithering, ILGPU vs DirectX, Radeon bench,

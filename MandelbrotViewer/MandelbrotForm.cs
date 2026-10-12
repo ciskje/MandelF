@@ -91,9 +91,6 @@ public partial class MandelbrotForm : Form
                 if (_settings.Engine == nameof(RenderEngine.Cuda))
                     radioCuda.Checked = true;
             }
-            if (_settings.Engine == nameof(RenderEngine.Rust) && RustMandelbrot.IsAvailable)
-                radioRust.Checked = true;
-
             // If a GPU engine is not available, show the reason (previously it stayed gray).
             var issues = new List<string>();
             if (!dxOk) issues.Add("DirectX: " + (DxMandelbrot.LastError.Length > 0 ? DxMandelbrot.LastError : "initialization failed"));
@@ -146,7 +143,6 @@ public partial class MandelbrotForm : Form
         Palette palette = ActivePalette;
         int aa = preview ? 1 : AaFactor;
         bool useCuda = _engine == RenderEngine.Cuda && GpuMandelbrot.IsReady;
-        bool useRust = _engine == RenderEngine.Rust && RustMandelbrot.IsAvailable;
         bool gpuDouble = false;
         if (chkIterAuto.Checked)
             numIter.Value = maxIter; // in auto the number is disabled but shows the value used
@@ -159,22 +155,6 @@ public partial class MandelbrotForm : Form
             var bmp = new Bitmap(w, h);
             if (useCuda)
                 gpuDouble = await Task.Run(() => GpuMandelbrot.Render(bmp, cx, cy, scale, maxIter, palette, aa, UseDoublePrecision, token, _jcx, _jcy, _julia), token);
-            else if (useRust)
-            {
-                try
-                {
-                    await Task.Run(() => RustMandelbrot.Render(bmp, cx, cy, scale, maxIter, palette, aa, token, _jcx, _jcy, _julia, UseDoublePrecision), token);
-                }
-                catch (Exception ex) when (ex is not OperationCanceledException)
-                {
-                    bmp.Dispose();
-                    _engine = RenderEngine.Cpu;
-                    radioCpu.Checked = true;
-                    ApplyEngineVisibility();
-                    lblStatus.Text = "Rust: " + ex.Message + " — falling back to CPU";
-                    return;
-                }
-            }
             else
                 await Task.Run(() => Mandelbrot.Render(bmp, cx, cy, scale, maxIter, palette, aa, token, _jcx, _jcy, _julia, UseDoublePrecision), token);
 
@@ -188,7 +168,7 @@ public partial class MandelbrotForm : Form
             pictureBox.Image = _fractal;
             old?.Dispose();
 
-            string engineLabel = useCuda ? $"CUDA-{(gpuDouble ? "double" : "float")} {GpuMandelbrot.DeviceShortName}" : useRust ? $"Rust-{(UseDoublePrecision ? "double" : "float")}" : $"CPU-{(UseDoublePrecision ? "double" : "float")}";
+            string engineLabel = useCuda ? $"CUDA-{(gpuDouble ? "double" : "float")} {GpuMandelbrot.DeviceShortName}" : $"CPU-{(UseDoublePrecision ? "double" : "float")} {Mandelbrot.CpuSimdLabel}";
             string juliaLabel = _julia ? $" | Julia c={_jcx:+0.000000;-0.000000} {_jcy:+0.000000;-0.000000}i" : "";
             lblStatus.Text = $"Center {cx:+0.000000;-0.000000} {cy:+0.000000;-0.000000}i | width {scale:E2} | iter {maxIter}{(chkIterAuto.Checked ? " (auto)" : "")} | {ActivePalette}{(aa > 1 ? $" AA{aa}x" : "")} | engine {engineLabel}{juliaLabel}{(preview ? " (preview)" : "")}";
         }
@@ -253,7 +233,7 @@ public partial class MandelbrotForm : Form
         bool dx = _engine == RenderEngine.DirectX && DxMandelbrot.IsReady;
         dxPanel.Visible = dx;
         pictureBox.Visible = !dx;
-        bool gpuEngine = _engine != RenderEngine.Cpu && _engine != RenderEngine.Rust; // the GPU dropdown is shown only with a GPU engine
+        bool gpuEngine = _engine != RenderEngine.Cpu; // the GPU dropdown is shown only with a GPU engine
         lblGpu.Visible = gpuEngine;
         cmbGpu.Visible = gpuEngine;
         bool prec = _engine != RenderEngine.DirectX; // precision choice for CPU and CUDA (DirectX is always float)
@@ -704,7 +684,7 @@ public partial class MandelbrotForm : Form
             "Palette from dropdown (Fire, Ice, Thermal, Ocean, Violet, Desert, Forest)\n" +
             "Auto iterations: checkbox, grow with zoom level\n" +
             "AA: 1x off, 2x/4x/8x with nearby pixel averaging\n" +
-            "Engines: CPU, Rust (SIMD via mandel_ffi.dll), CUDA (compute) or DirectX (realtime, float)\n" +
+            "Engines: CPU, CUDA (compute) or DirectX (realtime, float)\n" +
             "GPU: choose video card from dropdown (Auto = most powerful)\n\n" +
             "File menu: save/load zone as JSON.",
             "About", MessageBoxButtons.OK, MessageBoxIcon.Information);
@@ -714,8 +694,7 @@ public partial class MandelbrotForm : Form
     {
         RenderEngine.DirectX when DxMandelbrot.IsReady => "DirectX realtime (float)",
         RenderEngine.Cuda when GpuMandelbrot.IsReady => $"CUDA ({GpuMandelbrot.DeviceShortName})",
-        RenderEngine.Rust when RustMandelbrot.IsAvailable => "Rust SIMD (mandel-ffi)",
-        _ => "CPU multicore",
+        _ => $"CPU multicore ({Mandelbrot.CpuSimdLabel})",
     };
 
     // Applies saved settings (without rendering: Shown handles that).
@@ -878,6 +857,7 @@ public partial class MandelbrotForm : Form
         sb.AppendLine("=== Engine ===");
         sb.AppendLine($"Selected: {RenderEngineInfo.DisplayName(_engine)}");
         sb.AppendLine($"In use:   {EngineDescription()}");
+        sb.AppendLine($"CPU SIMD: {Mandelbrot.CpuSimdLabel}");
         sb.AppendLine();
         sb.AppendLine("=== DirectX (D3D11) ===");
         sb.AppendLine($"Ready:        {(DxMandelbrot.IsReady ? "yes" : "NO")}");
@@ -992,7 +972,7 @@ public partial class MandelbrotForm : Form
         }
         else
         {
-            // CPU/Rust engine: selection remembered, applied when engine changes.
+            // CPU engine: selection remembered, applied when engine changes.
             lblStatus.Text = $"GPU: {name} ({RenderEngineInfo.DisplayName(_engine)} engine, will apply on engine change)";
         }
     }
@@ -1002,18 +982,7 @@ public partial class MandelbrotForm : Form
         if (sender is not RadioButton r || !r.Checked) return;
         _engine = r == radioCuda ? RenderEngine.Cuda
             : r == radioDx ? RenderEngine.DirectX
-            : r == radioRust ? RenderEngine.Rust
             : RenderEngine.Cpu;
-
-        // Rust DLL missing: fall back to CPU immediately.
-        if (_engine == RenderEngine.Rust && !RustMandelbrot.IsAvailable)
-        {
-            _engine = RenderEngine.Cpu;
-            radioCpu.Checked = true;
-            ApplyEngineVisibility();
-            lblStatus.Text = "Rust not available: " + RustMandelbrot.LastError;
-            return;
-        }
 
         // GPU engine not yet initialized: initialize now on the selected card.
         if (_engine == RenderEngine.Cuda && !GpuMandelbrot.IsReady)

@@ -239,8 +239,8 @@ described purely as an interface and behavior contract, and the acceptance
 checklist carries OS-agnostic portability expectations (docs only, no
 version bump). Documentation is kept separate from release history, development tasks, generic questions, and repository workflow instructions.
 
-Release v2.22.8 is published on GitHub with the self-contained
-`MandelbrotViewer.exe` asset (v2.22.8, ~155 MB); the README links to the latest release download.
+Release v2.24.1 is published on GitHub with the self-contained
+`MandelbrotViewer.exe` asset (v2.24.1, ~155 MB); the README links to the latest release download.
 A Windows installer `MandelbrotViewer-Setup-2.22.7.exe` (~47 MB, Inno Setup,
 LZMA2, EN/IT wizard, admin scope, Start-menu + optional desktop shortcut,
 post-install launch option) is attached to the same GitHub release and built from a fresh `published\` self-contained
@@ -290,6 +290,28 @@ it is the Windows-specific replication contract (backend names, paths, WinForms)
 while `SPEC_FOR_LLM_PLATFORM_AGNOSTIC.md` delegates all implementation choices;
 merging them would destroy one of the two purposes. Verified with a clean build
 (0 warnings), `--diag-gpu` CUDA render, and `--bench-cpu float`.
+
+v2.24.1 shows the active CPU SIMD path everywhere via
+`Mandelbrot.CpuSimdLabel` (`AVX512`/`AVX2`/`SSE2`/`scalar`, sharing the
+`CpuUseAvx512` dispatch flag): main status bar, About/log engine line,
+diagnostics log, benchmark/export/video labels, `--bench-cpu` header.
+
+v2.24.0 added a native AVX512 CPU kernel: `Vector512` escape cores (8
+doubles / 16 floats per block) with matching row and benchmark blocks,
+dispatched when `Avx512F` is supported, 256-bit fallback otherwise. Same op
+order and lane formulas (double bit-identical to scalar; verified 0 pixel
+diffs and identical benchmark sums). Best-of-3 Release on Ryzen 9 9900X:
+double 9.7 → 13.8 MPixel/s (+42%), float 15.2 → 21.3 (+40%); history bars
+remeasured. `.NET 8 note: Vector512<T>` has no public constructors —
+broadcast via `Vector512.Create(x)`, span loads via
+`Vector512.LoadUnsafe(ref span[0])`.
+
+v2.23.0 removed the Rust engine (`RustMandelbrot.cs` + `mandel_ffi.dll` FFI,
+`RenderEngine.Rust`, toolbar radio, all view/export/video/benchmark branches;
+old `Engine=Rust` settings fall back to CPU; `publish.ps1` ships only the
+single-file exe). Rationale: one C# SIMD core to evolve toward a native
+AVX512 Zen5 kernel (plan in TODO). Verified with a clean build (0 warnings,
+0 errors).
 
 Launcher fix (no code change, no version bump): `run.bat` hardcoded
 `%USERPROFILE%\.dotnet\dotnet.exe`, but this machine has dotnet in

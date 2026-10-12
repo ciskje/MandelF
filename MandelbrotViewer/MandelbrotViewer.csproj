@@ -6,9 +6,9 @@
     <Nullable>enable</Nullable>
     <UseWindowsForms>true</UseWindowsForms>
     <ImplicitUsings>enable</ImplicitUsings>
-    <Version>2.22.8</Version>
-    <AssemblyVersion>2.22.8.0</AssemblyVersion>
-    <FileVersion>2.22.8.0</FileVersion>
+    <Version>2.24.1</Version>
+    <AssemblyVersion>2.24.1.0</AssemblyVersion>
+    <FileVersion>2.24.1.0</FileVersion>
     <ApplicationIcon>app.ico</ApplicationIcon>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <InvariantGlobalization>true</InvariantGlobalization>

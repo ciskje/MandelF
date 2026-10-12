@@ -12,9 +12,8 @@ Interactive Mandelbrot set viewer built with C# / WinForms (.NET 8, Windows only
 
 ## Features
 
-- **Four rendering engines** with automatic fallback:
-  - **CPU** — always available, parallel SIMD (double; float fast path on wide Mandelbrot views)
-  - **Rust** — same formulas via `mandel_ffi.dll` (SIMD AVX512/AVX2 from the MandelR core), selectable in the toolbar
+- **Three rendering engines** with automatic fallback:
+  - **CPU** — always available, parallel SIMD with AVX512 wide path on Zen5 (double bit-identical; float fast path on wide Mandelbrot views)
   - **CUDA** (NVIDIA) — float 32-bit or double 64-bit, via native PTX kernels
   - **DirectX 11** — realtime ~60 fps pixel shader, via Vortice
 
@@ -48,13 +47,12 @@ Interactive Mandelbrot set viewer built with C# / WinForms (.NET 8, Windows only
 
 ## Download
 
-Download the latest self-contained Windows executable (v2.22.8:
+Download the latest self-contained Windows executable (v2.24.1:
 `MandelbrotViewer.exe`, ~155 MB, no .NET installation required) from the
 [GitHub Releases page](https://github.com/ciskje/MandelC/releases/latest).
-Extract and run it together with `mandel_ffi.dll` (ships in the same archive;
-without it the Rust engine falls back to CPU). Alternatively use the Windows
-installer (`MandelbrotViewer-Setup-2.22.8.exe`, bundles the 2.22.8 app including
-the Rust DLL) from the [v2.22.8 release](https://github.com/ciskje/MandelC/releases/tag/v2.22.8):
+Alternatively use the Windows
+installer (`MandelbrotViewer-Setup-2.24.1.exe`)
+from the [v2.24.1 release](https://github.com/ciskje/MandelC/releases/tag/v2.24.1):
 it installs to Program Files with Start-menu shortcuts and an uninstaller.
 
 ## Build & Run
@@ -66,10 +64,7 @@ dotnet build MandelbrotViewer\MandelbrotViewer.csproj
 # Run (debug)
 dotnet run --project MandelbrotViewer
 
-# Rust engine DLL (from the MandelR repo; copied next to the exe by publish.ps1)
-cargo build --release -p mandel-ffi   # -> mandel_ffi.dll
-
-# Publish + installer (self-contained single file + mandel_ffi.dll, then ISCC)
+# Publish + installer (self-contained single file, then ISCC)
 .\setup.bat   # -> MandelbrotViewer-Setup-<version>.exe
 ```
 

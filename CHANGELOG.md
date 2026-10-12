@@ -3,6 +3,44 @@
 Versioning `X.Y.Z` (if `Z` is 0, short notation `X.Y`). Bump rules in
 `AGENTS.md`. The version is shown in the window title. Entries are grouped
 by minor series below, newest first.
+## v2.24.x — AVX512 CPU kernel
+- **v2.24.1** — The active CPU SIMD path is now visible everywhere:
+  new `Mandelbrot.CpuSimdLabel` (`AVX512` / `AVX2` / `SSE2` / `scalar`,
+  single source with the dispatch flag `CpuUseAvx512`) shown in the main
+  status bar (`CPU-double AVX512`), About/log `In use` line, diagnostics
+  log (`CPU SIMD:`), benchmark/export/video labels and the `--bench-cpu`
+  header (`AMD Ryzen 9 9900X [AVX512]`). Verified: clean build, CLI header
+  shows `[AVX512]`, benchmark still 13.9–14 MPixel/s double.
+  Files: `Mandelbrot.cs`, `MandelbrotForm.cs`, `BenchmarkForm.cs`,
+  `ExportForm.cs`, `ZoomVideoForm.cs`, `Diagnostics.cs`, `TODO.md`,
+  `SPECS.md`, `CHANGELOG.md`, `AppVersion.cs`, `.csproj`.
+- **v2.24.0** — Native AVX512 CPU kernel for Zen5: new `Vector512`
+  escape cores (`EscapeBlockDouble512` 8 lanes, `EscapeBlockFloat512`
+  16 lanes) + matching row and benchmark blocks, dispatched when
+  `Avx512F` is supported with fallback to the 256-bit path. Same op order
+  and lane formulas, so double stays bit-identical to scalar (verified:
+  0 differing pixels vs 256-bit on Mandelbrot/Julia, AA1/AA2, tile offsets;
+  benchmark row sums identical at full 10915 iterations). A/B best-of-3
+  Release on Ryzen 9 9900X vs v2.22.8 CPU core: double 9.7 → 13.8 (+42%),
+  float 15.2 → 21.3 (+40%) — above the +20% keep gate. History bars
+  remeasured. Implementation note: `Vector512<T>` has no public
+  constructors in .NET 8 — broadcast via `Vector512.Create(x)`, span loads
+  via `Vector512.LoadUnsafe(ref span[0])`.
+  Files: `Mandelbrot.cs`, `BenchmarkForm.cs`, `TODO.md`, `SPECS.md`,
+  `SPEC_FOR_LLM.md`, `SPEC_FOR_LLM_PLATFORM_AGNOSTIC.md`, `README.md`,
+  `CHANGELOG.md`, `AppVersion.cs`, `.csproj`.
+## v2.23.x — CPU-only SIMD (Rust removed)
+- **v2.23.0** — Removed the Rust engine: deleted `RustMandelbrot.cs`
+  (`mandel_ffi.dll` FFI), the `RenderEngine.Rust` value, the toolbar radio,
+  and all view/export/video/benchmark branches (saved `Engine=Rust` falls
+  back to CPU). `publish.ps1` no longer ships the DLL; README updated to
+  three engines. Reason: single C# SIMD core is easier to evolve toward a
+  native AVX512 Zen5 kernel (see TODO plan). Verified: clean build
+  (0 warnings, 0 errors).
+  Files: `RustMandelbrot.cs` (deleted), `RenderEngine.cs`,
+  `MandelbrotForm.cs`, `MandelbrotForm.Designer.cs`, `BenchmarkForm.cs`,
+  `ExportForm.cs`, `ZoomVideoForm.cs`, `publish.ps1`, `README.md`,
+  `TODO.md`, `SPECS.md`, `CHANGELOG.md`, `AppVersion.cs`, `.csproj`.
 ## v2.22.x — Native CUDA backend
 - **v2.22.8** — Rust SIMD engine selectable in the toolbar (`RustMandelbrot.cs`
   via `mandel_ffi.dll` from MandelR's `mandel-core`: same formulas, AVX512/AVX2

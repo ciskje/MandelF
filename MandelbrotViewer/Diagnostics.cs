@@ -303,7 +303,7 @@ internal static class Diagnostics
     public static void BenchCpu(int runs, TimeSpan budget, string? csvPath = null, bool useFloat = false)
     {
         string precision = useFloat ? "float" : "double";
-        Console.WriteLine($"Standardized CPU benchmark ({CpuName()}): {runs} runs of {budget.TotalSeconds:0} s, " +
+        Console.WriteLine($"Standardized CPU benchmark ({CpuName()} [{Mandelbrot.CpuSimdLabel}]): {runs} runs of {budget.TotalSeconds:0} s, " +
             $"area {BenchmarkStandard.Width}x{BenchmarkStandard.Height} AA{BenchmarkStandard.Aa} " +
             $"({BenchmarkStandard.PixelsPerFrame / 1e6:0.##} MPixel/frame), " +
             $"{BenchmarkStandard.MaxIter} iter, {precision}, iterations only.");
