@@ -1,5 +1,5 @@
 ﻿# TODO — MandelC
-- [ ] Commit + push cleanup and docs (no code change, release v2.24.1 already current) — pending
+- [x] Commit + push cleanup and docs (no code change, release v2.24.1 already current) — completed (commit 27898fe pushed to main; no new release — v2.24.1 exe asset unchanged)
 - [x] Rewrite SPECS.md platform-agnostic (no OS/CPU/GPU-tech/environment references; portable behavioral contracts) — completed (full rewrite: generic CPU/GPU-compute/realtime engines, merged optimizations, abstract settings/CLI/packaging, portability contract + acceptance checklist; ~330→~190 lines; docs only, no version bump)
 - [x] Remove old SPEC_FOR_LLM.md + SPEC_FOR_LLM_PLATFORM_AGNOSTIC.md (superseded by the maintained SPECS.md) — completed (deleted via git rm; SPECS.md Application Status section rewritten, history entries kept; no version bump)
 - [x] Delete .pi/ directory (foreign tool state) — completed

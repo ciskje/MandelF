@@ -1,5 +1,13 @@
 # QUESTIONS — MandelC
 
+- **What the .pdb file is for** — answered. `.pdb` (program database) holds
+  the debug symbols: the mapping from compiled code back to source files,
+  line numbers, and symbol names. The program runs fine without it, but with
+  `published\MandelbrotViewer.pdb` next to the exe, exception stack traces
+  and crash reports include exact source lines instead of bare offsets —
+  which is why it ships alongside the release exe (60 KB) while the
+  installer excludes it (`Excludes: "*.pdb"`).
+
 - **Difference between intent and specification** — answered. The intent is
   the *why*: the goal or problem behind a request (e.g. "I want to know the
   program really uses AVX512"). The specification is the *what*: the precise,
