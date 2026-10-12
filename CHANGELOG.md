@@ -4,7 +4,10 @@ Versioning `X.Y.Z` (if `Z` is 0, short notation `X.Y`). Bump rules in
 `AGENTS.md`. The version is shown in the window title. Entries are grouped
 by minor series below, newest first.
 ## v2.22.x — Native CUDA backend
-- **v2.22.8** — Ponytail-audit cleanup, no behavior change: deleted dead
+- **v2.22.8** — Rust SIMD engine selectable in the toolbar (`RustMandelbrot.cs`
+  via `mandel_ffi.dll` from MandelR's `mandel-core`: same formulas, AVX512/AVX2
+  dispatch; view/export/video/benchmark + CPU fallback; installer bundles the DLL).
+  Ponytail-audit cleanup, no behavior change: deleted dead
   `Mandelbrot.ColorFromEscape` + `PaletteColors.ColorFor` (zero callers),
   dropped the ignored `maxIter` from the palette-table cache key (`GetLut` /
   both `EnsureLut`, fields removed), merged the CPU double/float benchmark
