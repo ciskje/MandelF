@@ -1,4 +1,4 @@
-﻿# CHANGELOG — MandelC#
+﻿# CHANGELOG — MandelC
 
 Versioning `X.Y.Z` (if `Z` is 0, short notation `X.Y`). Bump rules in
 `AGENTS.md`. The version is shown in the window title. Entries are grouped

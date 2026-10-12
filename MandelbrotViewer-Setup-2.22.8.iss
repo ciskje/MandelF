@@ -16,7 +16,7 @@ DefaultDirName={autopf}\{#MyAppName}
 DefaultGroupName={#MyAppName}
 UninstallDisplayName={#MyAppName}
 OutputBaseFilename=MandelbrotViewer-Setup-2.22.8
-SetupIconFile=Z:\Lavorazioni\2026\AI\MandelC#\MandelbrotViewer\app.ico
+SetupIconFile=Z:\Lavorazioni\2026\AI\MandelC\MandelbrotViewer\app.ico
 UninstallDisplayIcon={app}\{#MyAppExeName}
 ArchitecturesAllowed=x64compatible x86compatible
 ArchitecturesInstallIn64BitMode=x64compatible
@@ -35,7 +35,7 @@ Name: "italian"; MessagesFile: "compiler:Languages\Italian.isl"
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
 
 [Files]
-Source: "\\192.168.1.11\Volume_1\Lavorazioni\2026\AI\MandelC#\published\*"; DestDir: "{app}"; Flags: recursesubdirs ignoreversion; Excludes: "*.pdb"
+Source: "\\192.168.1.11\Volume_1\Lavorazioni\2026\AI\MandelC\published\*"; DestDir: "{app}"; Flags: recursesubdirs ignoreversion; Excludes: "*.pdb"
 
 [Icons]
 Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"

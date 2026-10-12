@@ -1,5 +1,5 @@
-﻿# TODO — MandelC#
-- [ ] Commit + push + GitHub v2.22.8 release (exe asset, README/SPECS update) — pending
+﻿# TODO — MandelC
+- [x] Commit + push + GitHub v2.22.8 release (exe asset, README/SPECS update) — completed (commit c33f788 pushed to main, release v2.22.8 with MandelbrotViewer.exe ~155 MB; installer not attached — .iss still names 2.22.7)
 - [x] Add setup.bat launcher (fresh publish + ISCC compile of the .iss) — completed (verified full run: publish + ISCC OK, installer rebuilt, no version bump)
 - [x] run.bat fails (hardcoded user-level dotnet path) — completed (PATH first, user path fallback; also fixed `)` in echo breaking the if-block, CRLF endings, same fallback in publish.ps1, AGENTS.md toolchain line; verified `run.bat --diag-gpu`, no version bump)
 - [x] Apply ponytail-audit findings (dead code, shared benchmark loops, native tile blit, wrapper removal) — completed (v2.22.8, SPEC_FOR_LLM.md kept — distinct purpose, see SPECS.md)

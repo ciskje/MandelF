@@ -449,7 +449,7 @@
         this.videoItem.ToolTipText = "MP4 zoom video with optional AA (Ctrl+Shift+V, requires ffmpeg)";
         this.realTimeItem.ToolTipText = "Back to set with RealTime animation (Esc to stop, Ctrl+Shift+R)";
         this.benchmarkItem.ToolTipText = "Standard benchmark: 8s at high iterations (Ctrl+B)";
-        this.aboutItem.ToolTipText = "About MandelC# (F1)";
+        this.aboutItem.ToolTipText = "About MandelC (F1)";
 
         // MandelbrotForm
         this.AutoScaleMode = AutoScaleMode.Font;

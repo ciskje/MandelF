@@ -135,7 +135,7 @@ public partial class ZoomVideoForm : Form
         // case is blocked above with an error).
         double startCx = _endCx, startCy = _endCy, startScale = _endScale;
         string tmpDir = Path.Combine(Path.GetTempPath(),
-            "MandelC#-video-" + Guid.NewGuid().ToString("N")[..8]);
+            "MandelC-video-" + Guid.NewGuid().ToString("N")[..8]);
         try
         {
             Directory.CreateDirectory(tmpDir);

@@ -1,4 +1,4 @@
-# QUESTIONS — MandelC#
+# QUESTIONS — MandelC
 
 Generic questions and answers that do not concern the program source.
 Moved out of `TODO.md` so the todo stays strictly about the program.
