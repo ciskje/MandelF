@@ -188,7 +188,7 @@ public partial class BenchmarkForm : Form
     private void ChartPanel_Paint(object? sender, PaintEventArgs e)
     {
         e.Graphics.Clear(chartPanel.BackColor);
-        float left = 132;
+        float left = 168;
         float right = 56;
         float top = 22;
         float bottom = 24;
@@ -226,8 +226,8 @@ public partial class BenchmarkForm : Form
             ("DirectX 5070 Ti", 338, dxBrush),
             ("DirectX 4070 SUPER", 262.4, dxBrush),
             ("DirectX AMD Radeon", 5.2, dxBrush),
-            ("CPU 9900X", 13.8, cpuBrush),
-            ("CPU 9900X float", 21.3, cpuBrush),
+            ("CPU 9900X AVX512", 13.8, cpuBrush),
+            ("CPU 9900X float AVX512", 21.3, cpuBrush),
         }.OrderByDescending(b => b.Value).ToArray();
         double maximum = bars.Max(b => b.Value) * 1.15;
 

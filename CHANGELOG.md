@@ -4,6 +4,12 @@ Versioning `X.Y.Z` (if `Z` is 0, short notation `X.Y`). Bump rules in
 `AGENTS.md`. The version is shown in the window title. Entries are grouped
 by minor series below, newest first.
 ## v2.24.x — AVX512 CPU kernel
+- **v2.24.2** — CPU history bars in the benchmark chart now say `AVX512`
+  (`CPU 9900X AVX512`, `CPU 9900X float AVX512`; label gutter widened to
+  fit), so the chart itself records how those bars were measured.
+  Verified: clean build + re-captured benchmark screenshot.
+  Files: `BenchmarkForm.cs`, `TODO.md`, `README.md`, `CHANGELOG.md`,
+  `AppVersion.cs`, `.csproj`, `screenshots/dialog-benchmark.png`.
 - **v2.24.1** — The active CPU SIMD path is now visible everywhere:
   new `Mandelbrot.CpuSimdLabel` (`AVX512` / `AVX2` / `SSE2` / `scalar`,
   single source with the dispatch flag `CpuUseAvx512`) shown in the main
