@@ -15,6 +15,7 @@ public partial class ZoomVideoForm : Form
     private readonly int _aa;
     private readonly bool _useCuda;
     private readonly bool _useDirectX;
+    private readonly bool _useRust;
     private readonly bool _julia;
     private readonly double _jcx, _jcy;
     private readonly int _viewW, _viewH;
@@ -36,6 +37,7 @@ public partial class ZoomVideoForm : Form
         _aa = Math.Max(1, aa);
         _useCuda = useCuda;
         _useDirectX = engine == RenderEngine.DirectX && DxMandelbrot.IsReady;
+        _useRust = engine == RenderEngine.Rust && RustMandelbrot.IsAvailable;
         radPrec32.Checked = !useDouble;
         radPrec64.Checked = useDouble;
         rowPrec.Enabled = _useCuda || UseCpu; // precision matters for CUDA and CPU (DX = float)
@@ -55,7 +57,7 @@ public partial class ZoomVideoForm : Form
     private void UpdateInfo()
     {
         string engineLabel = _useCuda ? $"CUDA {(UseDouble ? "64-bit" : "32-bit")}"
-            : _useDirectX ? "DirectX" : $"CPU {(UseDouble ? "64-bit" : "32-bit")}";
+            : _useDirectX ? "DirectX" : _useRust ? $"Rust {(UseDouble ? "64-bit" : "32-bit")}" : $"CPU {(UseDouble ? "64-bit" : "32-bit")}";
         string mode = _julia ? "Julia" : "Mandelbrot";
         int effAa = SelectedAa();
         lblInfo.Text = $"From the current view to the full set ({_viewW}×{_viewH} AA{effAa}x, {mode}, " +
@@ -230,6 +232,20 @@ public partial class ZoomVideoForm : Form
         }
         if (_useDirectX)
             return DxMandelbrot.RenderPreviewToBitmap(cx, cy, scale, _viewW, _viewH, maxIter, effAa, _palette, 0, 0, 0, 0, _jcx, _jcy, _julia);
+        if (_useRust)
+        {
+            var rust = new Bitmap(_viewW, _viewH, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
+            try
+            {
+                RustMandelbrot.Render(rust, cx, cy, scale, maxIter, _palette, effAa, ct, _jcx, _jcy, _julia, useDouble);
+                return rust;
+            }
+            catch
+            {
+                rust.Dispose();
+                throw;
+            }
+        }
         var cpu = new Bitmap(_viewW, _viewH, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
         try
         {

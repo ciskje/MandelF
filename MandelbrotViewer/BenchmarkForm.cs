@@ -10,6 +10,7 @@ public partial class BenchmarkForm : Form
     private readonly RenderEngine _engine;
     private readonly bool _useCuda;
     private readonly bool _useDirectX;
+    private readonly bool _useRust;
     private readonly bool _useDouble;
     private readonly string _deviceLabel;
     private CancellationTokenSource? _cts;
@@ -25,20 +26,23 @@ public partial class BenchmarkForm : Form
 
         _useCuda = engine == RenderEngine.Cuda && GpuMandelbrot.IsReady;
         _useDirectX = engine == RenderEngine.DirectX && DxMandelbrot.IsReady;
+        _useRust = engine == RenderEngine.Rust && RustMandelbrot.IsAvailable;
         _useDouble = useDouble;
-        _engine = _useDirectX ? RenderEngine.DirectX : _useCuda ? RenderEngine.Cuda : RenderEngine.Cpu;
+        _engine = _useDirectX ? RenderEngine.DirectX : _useCuda ? RenderEngine.Cuda : _useRust ? RenderEngine.Rust : RenderEngine.Cpu;
         // Device that actually runs the test (the benchmark uses the current
         // engine initialization, so show it next to the result).
         _deviceLabel = _useCuda ? GpuMandelbrot.DeviceShortName
             : _useDirectX ? DxMandelbrot.ShortAdapterName(DxMandelbrot.AdapterName)
+            : _useRust ? "Rust SIMD on " + Diagnostics.CpuName()
             : Diagnostics.CpuName();
         string note = engine switch
         {
             RenderEngine.Cuda when !_useCuda => " (CUDA not ready, using CPU)",
             RenderEngine.DirectX when !_useDirectX => " (DirectX not ready, using CPU)",
+            RenderEngine.Rust when !_useRust => " (Rust DLL not found, using CPU)",
             _ => "",
         };
-        string precision = _useCuda ? $"CUDA {(_useDouble ? "64-bit" : "32-bit")}" : _useDirectX ? "DirectX float" : $"CPU {(_useDouble ? "64-bit" : "32-bit")}";
+        string precision = _useCuda ? $"CUDA {(_useDouble ? "64-bit" : "32-bit")}" : _useDirectX ? "DirectX float" : _useRust ? $"Rust {(_useDouble ? "64-bit" : "32-bit")}" : $"CPU {(_useDouble ? "64-bit" : "32-bit")}";
         lblInfo.Text = $"Engine: {RenderEngineInfo.DisplayName(_engine)}{note}\n" +
             $"Zone {BenchmarkStandard.Width}x{BenchmarkStandard.Height} {BenchmarkStandard.Aa}x AA = {BenchmarkStandard.Width * BenchmarkStandard.Aa}x{BenchmarkStandard.Height * BenchmarkStandard.Aa} elementary samples without averaging, " +
             $"{BenchmarkStandard.MaxIter} max iterations, scale {BenchmarkStandard.Scale}, precision {precision} — " +
@@ -136,7 +140,9 @@ public partial class BenchmarkForm : Form
                 ( _, seconds, frames) = await Task.Run(() =>
                     _useCuda
                         ? GpuMandelbrot.BenchmarkGpu(BenchmarkStandard.CenterX, BenchmarkStandard.CenterY, BenchmarkStandard.Scale, BenchmarkStandard.Width, BenchmarkStandard.Height, BenchmarkStandard.MaxIter, BenchmarkStandard.Aa, _useDouble, BenchmarkStandard.Budget, progress, _cts.Token)
-                        : _useDouble
+                        : _useRust
+                            ? RustMandelbrot.BenchmarkRust(BenchmarkStandard.CenterX, BenchmarkStandard.CenterY, BenchmarkStandard.Scale, BenchmarkStandard.Width, BenchmarkStandard.Height, BenchmarkStandard.MaxIter, BenchmarkStandard.Aa, _useDouble, BenchmarkStandard.Budget, progress, _cts.Token)
+                            : _useDouble
                             ? Mandelbrot.BenchmarkCpu(BenchmarkStandard.CenterX, BenchmarkStandard.CenterY, BenchmarkStandard.Scale, BenchmarkStandard.Width, BenchmarkStandard.Height, BenchmarkStandard.MaxIter, BenchmarkStandard.Aa, BenchmarkStandard.Budget, progress, _cts.Token)
                             : Mandelbrot.BenchmarkCpuFloat(BenchmarkStandard.CenterX, BenchmarkStandard.CenterY, BenchmarkStandard.Scale, BenchmarkStandard.Width, BenchmarkStandard.Height, BenchmarkStandard.MaxIter, BenchmarkStandard.Aa, BenchmarkStandard.Budget, progress, _cts.Token),
                     _cts.Token);
@@ -159,7 +165,7 @@ public partial class BenchmarkForm : Form
         }
         catch (Exception ex)
         {
-            AppLog.Add("Benchmark " + (_useDirectX ? "DirectX" : (_useCuda ? "CUDA" : "CPU")) + ": " + ex.Message);
+            AppLog.Add("Benchmark " + (_useDirectX ? "DirectX" : (_useCuda ? "CUDA" : (_useRust ? "Rust" : "CPU"))) + ": " + ex.Message);
             lblResult.Text = "Error";
             lblDetail.Text = ex.Message;
             lblLive.Text = "";
@@ -286,6 +292,8 @@ public partial class BenchmarkForm : Form
     {
         if (_useCuda)
             return ("CUDA", GpuMandelbrot.DeviceShortName, _useDouble ? "64-bit" : "32-bit");
+        if (_useRust)
+            return ("Rust", _deviceLabel, _useDouble ? "64-bit" : "32-bit");
         if (_useDirectX)
             return ("DirectX", DxMandelbrot.ShortAdapterName(DxMandelbrot.AdapterName), "float");
         return ("CPU", Diagnostics.CpuName(), "double");
@@ -301,6 +309,8 @@ public partial class BenchmarkForm : Form
         {
             if (_useCuda)
                 GpuMandelbrot.Render(bmp, BenchmarkStandard.CenterX, BenchmarkStandard.CenterY, BenchmarkStandard.Scale, BenchmarkStandard.MaxIter, Palette.Fire, 1, _useDouble, ct);
+            else if (_useRust)
+                RustMandelbrot.Render(bmp, BenchmarkStandard.CenterX, BenchmarkStandard.CenterY, BenchmarkStandard.Scale, BenchmarkStandard.MaxIter, Palette.Fire, 1, ct, 0, 0, false, _useDouble);
             else
                 Mandelbrot.Render(bmp, BenchmarkStandard.CenterX, BenchmarkStandard.CenterY, BenchmarkStandard.Scale, BenchmarkStandard.MaxIter, Palette.Fire, 1, ct);
             return bmp;

@@ -16,6 +16,7 @@ public partial class ExportForm : Form
     private readonly int _aa;
     private readonly bool _useCuda;
     private readonly bool _useDirectX;
+    private readonly bool _useRust;
     private readonly bool _julia;
     private readonly double _jcx, _jcy;
     private readonly double _aspect;
@@ -40,6 +41,7 @@ public partial class ExportForm : Form
         _aa = Math.Max(1, aa);
         _useCuda = useCuda;
         _useDirectX = engine == RenderEngine.DirectX && DxMandelbrot.IsReady;
+        _useRust = engine == RenderEngine.Rust && RustMandelbrot.IsAvailable;
         radPrec32.Checked = !useDouble;
         radPrec64.Checked = useDouble;
         rowPrec.Enabled = _useCuda || UseCpu; // precision matters for CUDA and CPU (DX = float)
@@ -66,7 +68,7 @@ public partial class ExportForm : Form
     private void UpdateEngineLabel()
     {
         string engineLabel = _useCuda ? $"CUDA {(UseDouble ? "64-bit" : "32-bit")}"
-            : _useDirectX ? "DirectX" : $"CPU {(UseDouble ? "64-bit" : "32-bit")}";
+            : _useDirectX ? "DirectX" : _useRust ? $"Rust {(UseDouble ? "64-bit" : "32-bit")}" : $"CPU {(UseDouble ? "64-bit" : "32-bit")}";
         string modeLabel = _julia ? $"Julia c={_jcx:+0.000000;-0.000000} {_jcy:+0.000000;-0.000000}i" : "Mandelbrot";
         lblInfo.Text = $"Engine: {engineLabel} — {modeLabel}, {_palette}, {_maxIter} iterations. " +
             $"Render tiled {TileSize}×{TileSize}: AA unchanged even at high resolutions.";
@@ -218,6 +220,11 @@ public partial class ExportForm : Form
                         if (rendered == null)
                             throw new InvalidOperationException("DirectX tile render failed.");
                         CopyTile(rendered, tile, 0, 0);
+                    }
+                    else if (_useRust)
+                    {
+                        RustMandelbrot.RenderTile(tile, _cx, _cy, _scale, _maxIter, _palette, aa, ct,
+                            x, y, w, h, _jcx, _jcy, _julia, useDouble);
                     }
                     else
                     {
