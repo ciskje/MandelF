@@ -89,7 +89,7 @@ Every user request becomes an entry here. Status: `pending` → `completed`/`can
 - [x] v2.15.7: DX benchmark errors in log/diagnostics — completed
 - [x] Publish v2.15.6 + re-verify Radeon — completed
 - [x] v2.15.6: DX benchmark anti-hang (VRAM check + 60s timeout + device-removed) — completed
-- [ ] App crash (exception dialog, only assembly queue visible) — pending
+- [x] App crash (exception dialog, only assembly queue visible) — cancelled (stale report, never reproduced since; no diagnosis possible)
 - [x] v2.15.5: Recalculate benchmark history via CLI + table in code — completed
 - [x] v2.15.4: Benchmark rename CSV button + Close always on right — completed
 - [x] v2.15.3: Benchmark auto-calculated iterations (not fixed) = 10915 — completed

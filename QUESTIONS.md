@@ -169,21 +169,3 @@ zone constants) stays in `TODO.md` with its verdicts in `SPECS.md`.
   consequence; (5) optionally note that the §4.7 "swapchain or equivalent"
   maps to X11/Wayland presentation (or frame copy into the toolkit) on
   Linux. No math, constants, or GPU contract changes.
-
-- **[pi-web-access] "Dynamic tool activation requires Pi 0.86.1 or newer"** —
-  answered. Cosmetic warning from the `pi-web-access` extension (v0.31.0),
-  not a real version problem: Pi here is v0.87.1, which already supports
-  dynamic tools (`getAllTools`/`setActiveTools` present in the bundle).
-  Root cause is the extension's `supportsDynamicTools()` check in
-  `tool-activation.ts`: after verifying the API functions it re-reads the
-  Pi version via `import.meta.resolve("@earendil-works/pi-coding-agent")`,
-  but that package is not installed under the extensions sandbox
-  (`~/.pi/agent/npm/node_modules/@earendil-works` is empty — Pi injects the
-  API instead of installing it), so the resolve throws, the `catch`
-  returns `false`, and the warning is printed even on new Pi versions.
-  Harmless: as the message says, web tools "remain eagerly available",
-  i.e. search/fetch/source-check still work, just loaded eagerly instead
-  of on-demand via `web_enable`. Upstream fix belongs in `pi-web-access`
-  (version check should not depend on `import.meta.resolve`, or should
-  treat "API functions present" as sufficient). Workaround if the noise
-  bothers: `pi update` when a fixed release exists, or ignore it.
