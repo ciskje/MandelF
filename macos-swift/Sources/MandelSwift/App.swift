@@ -1,4 +1,5 @@
 import AppKit
+import MandelCore
 import SwiftUI
 
 @main
@@ -54,8 +55,8 @@ struct ContentView: View {
                     }
                     .simultaneously(with:
                         MagnificationGesture()
-                            .updating($zoom) { v, s, _ in s = v.magnification }
-                            .onEnded { v in baseHeight /= Double(v.magnification) }
+                            .updating($zoom) { v, s, _ in s = v }
+                            .onEnded { v in baseHeight /= Double(v) }
                     )
             )
             .onTapGesture(count: 2) { reset() }

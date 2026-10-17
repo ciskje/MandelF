@@ -65,7 +65,7 @@ dotnet publish "MandelbrotViewer\MandelbrotViewer.csproj" -c Release -r win-x64 
 ## Git
 
 - Commit scope: only files in `windows-c/`. Never commit secrets.
-- Ignored via `MandelC/.gitignore`: `bin/`, `obj/`, `published/` (regenerable).
+- Ignored via the root `.gitignore`: `bin/`, `obj/`, `published/` (regenerable).
 - Concise commit messages in English starting with the version number
   (e.g. `v2.0.1: DirectX realtime, benchmark, ...`).
 - Commit/push only on explicit user request.

@@ -4,9 +4,13 @@ import PackageDescription
 let package = Package(
     name: "MandelSwift",
     platforms: [.macOS(.v14)],
-    products: [.executable(name: "MandelSwift", targets: ["MandelSwift"])],
+    products: [
+        .executable(name: "MandelSwift", targets: ["MandelSwift"]),
+        .executable(name: "SelfCheck", targets: ["SelfCheck"]),
+    ],
     targets: [
-        .executableTarget(name: "MandelSwift"),
-        .testTarget(name: "MandelSwiftTests", dependencies: ["MandelSwift"]),
+        .target(name: "MandelCore"),
+        .executableTarget(name: "MandelSwift", dependencies: ["MandelCore"]),
+        .executableTarget(name: "SelfCheck", dependencies: ["MandelCore"]),
     ]
 )

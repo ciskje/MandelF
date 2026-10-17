@@ -1,9 +1,10 @@
 # .NET / MSBuild (all environments)
 [Bb]in/
 [Oo]bj/
-# Publish / bundle outputs (regenerable)
+# Build outputs (regenerable; .build redirected to SSD temp via --scratch-path)
 published/
 dist/
+.build/
 *.dmg
 # Inno Setup installer (regenerable with ISCC, attached to GitHub Release)
 windows-c/MandelbrotViewer-Setup-*.exe

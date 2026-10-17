@@ -15,6 +15,7 @@ Workflow, versioning and releases: `AGENTS.md`. Change tracker: `TODO.md`.
   (`git log -- windows-c/`).
 - `macos-avalonia/` copied from the unversioned `MandelMET` folder; its prior
   changelog continues in `macos-avalonia/CHANGELOG.md`.
+- `macos-swift/` is new in this repo (v0.1.0, no prior history).
 
 Build only for the local platform — see the environment's own `AGENTS.md`.
 

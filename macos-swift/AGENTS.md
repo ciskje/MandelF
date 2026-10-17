@@ -10,7 +10,7 @@ Pure SwiftPM executable, no Xcode project (`import SwiftUI` for UI,
 cd macos-swift
 export SCRATCH="$TMPDIR/mandel-swift-build"   # .build on SSD: repo lives on NAS
 swift build --scratch-path "$SCRATCH"
-swift test --scratch-path "$SCRATCH"          # escape-time asserts
+swift run SelfCheck --scratch-path "$SCRATCH"  # escape-time asserts
 swift run --scratch-path "$SCRATCH"           # opens the viewer window
 ```
 

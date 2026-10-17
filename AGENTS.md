@@ -9,8 +9,8 @@ One repo, two native builds of the same Mandelbrot viewer:
 - `macos-swift/` — native SwiftUI / Swift 6, macOS 14+, Apple Silicon.
 
 Normative math/render contracts: `SPEC_FOR_LLM_PLATFORM_AGNOSTIC.md` (root).
-Platform details (build, gotchas, paths) live in `windows-c/AGENTS.md` and
-`macos-avalonia/AGENTS.md`. This file holds only what is shared: workflow,
+Platform details (build, gotchas, paths) live in `windows-c/AGENTS.md`,
+`macos-avalonia/AGENTS.md` and `macos-swift/AGENTS.md`. This file holds only what is shared: workflow,
 versioning and releases. Build on each machine **only for its own platform(s)**.
 
 ## Change workflow

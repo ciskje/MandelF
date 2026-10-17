@@ -2,8 +2,8 @@ import Foundation
 
 /// Escape-time core. Returns the iteration count in 0...maxIter,
 /// where maxIter means "inside the set".
-enum Mandelbrot {
-    static func iterations(cx: Double, cy: Double, maxIter: Int) -> Int {
+public enum Mandelbrot {
+    public static func iterations(cx: Double, cy: Double, maxIter: Int) -> Int {
         var zx = 0.0
         var zy = 0.0
         var i = 0
@@ -20,7 +20,7 @@ enum Mandelbrot {
 
     /// RGBA render (8 bit, alpha-last). Flat sine palette, in-set pixels black.
     // ponytail: scalar loop; vectorize/Metal only if measurably too slow.
-    static func render(width: Int, height: Int, centerX: Double, centerY: Double,
+    public static func render(width: Int, height: Int, centerX: Double, centerY: Double,
                        viewHeight: Double, maxIter: Int) -> [UInt8] {
         var px = [UInt8](repeating: 0, count: width * height * 4)
         let step = viewHeight / Double(height)
