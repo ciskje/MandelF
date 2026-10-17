@@ -327,7 +327,7 @@ struct BenchmarkSheet: View {
             let plotW = max(1, size.width - L - R)
             let rowH = 22.0
             ctx.draw(Text("Confronto prestazioni (MPixel/s)").font(.headline),
-                     at: CGPoint(x: L, y: 11), anchor: .leading)
+                     at: CGPoint(x: 4, y: 11), anchor: .leading)
             for (i, e) in entries.enumerated() {
                 let midY = T + Double(i) * rowH + rowH / 2
                 let bw = max(1, plotW * e.value / top)
@@ -417,7 +417,8 @@ struct BenchmarkSheet: View {
                 }
                 return
             }
-            let dev = eng?.deviceShortName ?? Diagnostics.cpuName()
+            let dev = (eng?.deviceShortName ?? Diagnostics.cpuName())
+                + Diagnostics.hostMacTag()
             await MainActor.run {
                 running = false
                 let mpix = Double(r.frames * Benchmark.samples) / r.seconds / 1e6
@@ -436,7 +437,8 @@ struct BenchmarkSheet: View {
         panel.nameFieldStringValue = "benchmark.csv"
         guard panel.runModal() == .OK, let url = panel.url else { return }
         let isGPU = model.engineSel == .gpu
-        let dev = isGPU ? (model.metal?.deviceShortName ?? "GPU") : Diagnostics.cpuName()
+        let dev = (isGPU ? (model.metal?.deviceShortName ?? "GPU") : Diagnostics.cpuName())
+            + Diagnostics.hostMacTag()
         let prec = isGPU ? "32-bit" : (model.useDouble ? "64-bit" : "32-bit")
         for (i, run) in runs.enumerated() {
             let mpix = Double(run.frames * Benchmark.samples) / run.seconds / 1e6

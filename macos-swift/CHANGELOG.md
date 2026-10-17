@@ -1,5 +1,15 @@
 # CHANGELOG — macos-swift
 
+## v7.3.2
+
+- Benchmark device labels (GUI detail line, CSV export, CLI CSV) now carry
+  the host MAC address (`Diagnostics.hostMac()`, en0 first), so runs from
+  different machines with the same CPU/GPU name no longer collide in
+  benchmark history.
+- Benchmark chart: title aligned with the label column (left edge) instead
+  of floating over the plot area.
+- SelfCheck: hostMAC format check added.
+
 ## v7.3.1
 
 - Ponytail-audit refactor, no behavior change: padded SIMD4 rows (tail
