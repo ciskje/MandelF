@@ -39,16 +39,6 @@ Rules: build only for the local platform (`windows-c` builds on Windows,
 `windows-python-vX.Y.Z`, `macos-python-vX.Y.Z`);
 release notes in English. Details in `AGENTS.md`.
 
-## Screenshots
-
-![windows-c: deep zoom, Thermal palette, CUDA-double on RTX 4070 SUPER](windows-c/screenshots/dialog-benchmarkV2.png)
-
-![windows-python: deep zoom, Fire palette](generic-python/screenshots/screenshot-ui.png)
-
-![macos-python (ex-MandelPy, Metal f32)](macos-python/screenshots/main-window.png)
-
-![macos-swift: full set, Fire palette](macos-swift/screenshots/full-fire.png)
-
 ## Build
 
 ```powershell
