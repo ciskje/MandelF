@@ -1,0 +1,17 @@
+# .NET / MSBuild (all environments)
+[Bb]in/
+[Oo]bj/
+# Publish / bundle outputs (regenerable)
+published/
+dist/
+*.dmg
+# Inno Setup installer (regenerable with ISCC, attached to GitHub Release)
+windows-c/MandelbrotViewer-Setup-*.exe
+# VS / Rider
+.vs/
+.idea/
+*.user
+*.suo
+# OS / junk (all platforms)
+.DS_Store
+._*

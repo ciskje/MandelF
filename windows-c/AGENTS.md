@@ -6,7 +6,7 @@ and mandatory workflow for this project.
 ## Project
 
 Interactive Mandelbrot set viewer in C# / WinForms (.NET 8).
-Project root: `MandelC/`. Code: `MandelC/MandelbrotViewer/`.
+Project root: `windows-c/` (repo MandelF). Code: `windows-c/MandelbrotViewer/`.
 
 ## Language (mandatory)
 
@@ -64,7 +64,7 @@ dotnet publish "MandelbrotViewer\MandelbrotViewer.csproj" -c Release -r win-x64 
 
 ## Git
 
-- Commit scope: only files in `MandelC/`. Never commit secrets.
+- Commit scope: only files in `windows-c/`. Never commit secrets.
 - Ignored via `MandelC/.gitignore`: `bin/`, `obj/`, `published/` (regenerable).
 - Concise commit messages in English starting with the version number
   (e.g. `v2.0.1: DirectX realtime, benchmark, ...`).
