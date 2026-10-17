@@ -1,10 +1,10 @@
 import Foundation
 import MandelCore
 
-/// Headless CLI (§6.6, CPU subset): --bench-cpu [float] [--csv f].
-/// --diag-gpu / --bench-gpu report the missing GPU engine without crashing.
+/// Headless CLI (§6.6): --bench-cpu, --diag-gpu, --bench-gpu, plus
+/// --shot for doc screenshots.
 func usage() -> Never {
-    fputs("usage: MandelCLI --bench-cpu [float] [--csv file] | --diag-gpu [device] | --bench-gpu [device] [--csv file]\n", stderr)
+    fputs("usage: MandelCLI --bench-cpu [float] [--csv file] | --diag-gpu [device] | --bench-gpu [device] [--csv file] | --shot out W H cx cy scale maxIter palette aa [julia [jcx jcy]]\n", stderr)
     exit(2)
 }
 
@@ -73,6 +73,27 @@ case "--diag-gpu", "--bench-gpu":
         }
     }
     print(String(format: "best: %.1f Mpixel/s", best))
+case "--shot":
+    // Headless PNG render for docs/screenshots.
+    let a = Array(args)
+    guard a.count >= 8, let w = Int(a[1]), let h = Int(a[2]),
+          let cx = Double(a[3]), let cy = Double(a[4]), let scale = Double(a[5]),
+          let mi = Int(a[6]), let pal = Int(a[7]), let aa = Int(a.count > 8 ? a[8] : "1"),
+          (0 ..< 7).contains(pal), [1, 2, 4, 8].contains(aa)
+    else {
+        fputs("usage: MandelCLI --shot out.png W H cx cy scale maxIter palette aa [julia [jcx jcy]]\n", stderr)
+        exit(2)
+    }
+    let julia = a.count > 9 && a[9] == "julia"
+    let p = RenderParams(width: w, height: h, centerX: cx, centerY: cy,
+                         scale: scale, maxIter: Spec.clampIter(mi), palette: pal,
+                         aa: aa, useDouble: true, julia: julia,
+                         jcx: a.count > 10 ? Double(a[10]) ?? Spec.defaultJcx : Spec.defaultJcx,
+                         jcy: a.count > 11 ? Double(a[11]) ?? Spec.defaultJcy : Spec.defaultJcy)
+    guard let px = Fractal.render(p),
+          Png.write(rgba: px, width: w, height: h, to: URL(fileURLWithPath: a[0]))
+    else { exit(1) }
+    print("saved \(a[0])")
 default:
     usage()
 }

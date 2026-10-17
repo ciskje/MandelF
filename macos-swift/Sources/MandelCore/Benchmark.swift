@@ -41,6 +41,19 @@ public enum Benchmark {
         return Result(frames: frames, seconds: seconds)
     }
 
+    /// Historical reference bars from windows-c (§6.1; best of 3 runs).
+    public enum BarKind { case current, cuda, dx, cpu }
+    public static let referenceBars: [(label: String, value: Double, kind: BarKind)] = [
+        ("CUDA 5070 Ti 32-bit", 310.7, .cuda),
+        ("CUDA 4070 SUPER 32-bit", 250.1, .cuda),
+        ("CUDA 5070 Ti 64-bit", 6.7, .cuda),
+        ("CUDA 4070 S. 64-bit", 5.3, .cuda),
+        ("DirectX 5070 Ti", 338.0, .dx),
+        ("DirectX 4070 SUPER", 262.4, .dx),
+        ("DirectX AMD Radeon", 5.2, .dx),
+        ("CPU 9900X AVX512", 13.8, .cpu),
+        ("CPU 9900X float AVX512", 21.3, .cpu),
+    ]
     /// Rate units: Gpixel/s ≥ 1e9, Mpixel/s ≥ 1e6, kpixel/s ≥ 1e3 (§6.1).
     public static func formatRate(_ samplesPerSec: Double) -> String {
         if samplesPerSec >= 1e9 { return String(format: "%.2f Gpixel/s", samplesPerSec / 1e9) }

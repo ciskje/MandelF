@@ -43,7 +43,7 @@ Each environment versions independently (`X.Y.Z` = its own intent set):
 
 - Z = bugfix/tweak, Y = new feature/behavior, X = upheaval.
 - Docs/refactor/build never change the version.
-- Current: `windows-c` `2.24.2`, `macos-avalonia` `2.22.7`, `macos-swift` `0.3.0`.
+- Current: `windows-c` `2.24.2`, `macos-avalonia` `2.22.7`, `macos-swift` `0.3.1`.
 - Single source per environment: `<Version>` in its `.csproj`
   (`windows-c` also mirrors it into `AppVersion.cs`; the two must match).
   `macos-swift` uses `Sources/MandelCore/AppVersion.swift`.

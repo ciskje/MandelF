@@ -17,6 +17,8 @@ in that environment.
 
 ## Pending
 
+- [ ] `macos-swift`: benchmark chart reference bars from windows-c
+  (Risultato + CUDA/DirectX/CPU history, same values and colors).
 - [ ] `generic`: create GitHub repo `ciskje/MandelF` and push `main`
   (needs explicit user request).
 

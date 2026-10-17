@@ -292,9 +292,10 @@ struct BenchmarkSheet: View {
                         Text(result).font(.title2)
                         Text(detail).font(.caption).foregroundStyle(.secondary)
                     }
-                    chart
+                    Spacer()
                 }
             }
+            chart
             HStack {
                 Spacer()
                 Button("Export CSV") { exportCSV() }.disabled(runs.isEmpty)
@@ -309,26 +310,69 @@ struct BenchmarkSheet: View {
     }
 
     private var chart: some View {
-        // Current + session runs, max*1.15 (§6.1; reference bars omitted:
-        // the SPEC examples are other machines' values).
+        // Risultato + windows-c reference bars, sorted desc (§6.1).
         Canvas { ctx, size in
-            let vals = runs.map { Double($0.frames * Benchmark.samples) / $0.seconds / 1e6 }
-            guard let top = vals.max(), top > 0 else { return }
-            let span = top * 1.15
-            let rowH = min(22.0, size.height / Double(max(1, vals.count)))
-            for (i, v) in vals.enumerated() {
-                let w = size.width * (v / span)
-                let r = CGRect(x: 0, y: Double(i) * rowH + rowH * 0.19,
-                               width: w, height: rowH * 0.62)
-                ctx.fill(Path(r),
-                         with: .color(i == vals.count - 1 ? Color(red: 36 / 255,
-                                                                  green: 113 / 255,
-                                                                  blue: 163 / 255) : .gray))
-                ctx.draw(Text(String(format: "%.1f", v)).font(.caption),
-                         at: CGPoint(x: w + 4, y: r.midY))
+            var entries: [(label: String, value: Double, color: Color)] =
+                Benchmark.referenceBars.map {
+                    ($0.label, $0.value, barColor($0.kind))
+                }
+            if let last = runs.last {
+                let mpix = Double(last.frames * Benchmark.samples) / last.seconds / 1e6
+                entries.append(("Risultato", mpix, barColor(.current)))
             }
+            entries.sort { $0.value > $1.value }
+            guard !entries.isEmpty else { return }
+            let top = entries[0].value * 1.15
+            let L: Double = 180, R: Double = 64, T: Double = 24
+            let plotW = max(1, size.width - L - R)
+            let rowH = 22.0
+            ctx.draw(Text("Confronto prestazioni (MPixel/s)").font(.headline),
+                     at: CGPoint(x: L, y: 11), anchor: .leading)
+            for (i, e) in entries.enumerated() {
+                let midY = T + Double(i) * rowH + rowH / 2
+                let bw = max(1, plotW * e.value / top)
+                let bh = min(22.0, rowH * 0.62)
+                ctx.fill(Path(CGRect(x: L, y: midY - bh / 2, width: bw, height: bh)),
+                         with: .color(e.color))
+                ctx.draw(Text(e.label).font(.caption),
+                         at: CGPoint(x: L - 6, y: midY), anchor: .trailing)
+                let vtxt = Text(fmtMPix(e.value)).font(.caption)
+                if L + bw + 52 > size.width - 4 {
+                    ctx.draw(vtxt.foregroundStyle(.white),
+                             at: CGPoint(x: L + bw - 4, y: midY), anchor: .trailing)
+                } else {
+                    ctx.draw(vtxt, at: CGPoint(x: L + bw + 4, y: midY),
+                             anchor: .leading)
+                }
+            }
+            // two gridlines at 1/3 and 2/3 of max (§6.1)
+            var grid = Path()
+            let bottom = T + Double(entries.count) * rowH
+            for f in [1.0 / 3, 2.0 / 3] {
+                let gx = L + plotW * f
+                grid.move(to: CGPoint(x: gx, y: T))
+                grid.addLine(to: CGPoint(x: gx, y: bottom))
+            }
+            ctx.stroke(grid, with: .color(.gray.opacity(0.4)), lineWidth: 1)
+            ctx.draw(Text("0").font(.caption),
+                     at: CGPoint(x: L, y: bottom + 8), anchor: .leading)
+            ctx.draw(Text(fmtMPix(top)).font(.caption),
+                     at: CGPoint(x: L + plotW, y: bottom + 8), anchor: .trailing)
         }
-        .frame(height: 80)
+        .frame(height: 24 + 10 * 22 + 20)
+    }
+
+    private func fmtMPix(_ v: Double) -> String {
+        v == v.rounded() ? String(format: "%.0f", v) : String(format: "%.1f", v)
+    }
+
+    private func barColor(_ kind: Benchmark.BarKind) -> Color {
+        switch kind {
+        case .current: return Color(red: 36 / 255, green: 113 / 255, blue: 163 / 255)
+        case .cuda: return Color(red: 226 / 255, green: 126 / 255, blue: 34 / 255)
+        case .dx: return Color(red: 74 / 255, green: 143 / 255, blue: 87 / 255)
+        case .cpu: return Color(red: 112 / 255, green: 128 / 255, blue: 144 / 255)
+        }
     }
 
     private func start() {
