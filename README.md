@@ -8,6 +8,8 @@ platform and environment**, all implementing the same app.
 | `windows-c/` | C# / WinForms / .NET 8 | Windows only |
 | `macos-avalonia/` | C# / Avalonia 11 / .NET 8 | macOS arm64 |
 | `macos-swift/` | native SwiftUI / Swift 6 | macOS 14+, Apple Silicon |
+| `generic-python/` + `windows-python/` | Python / Tkinter, CPU+CUDA+Vulkan | Windows 64-bit |
+| `generic-python/` + `macos-python/` | Python / Tkinter, CPU+Metal | macOS arm64 |
 
 What is shared: the math, the behavior and the constants — the full
 normative contract lives in `AGENTS.md` §1–§8 (rendering model, CPU/GPU
@@ -31,7 +33,8 @@ Every environment folder follows the same layout:
 Rules: build only for the local platform (`windows-c` builds on Windows,
 `macos-*` on Mac); build outputs (`bin/`, `obj/`, `.build/`, `published/`,
 `dist/`) are gitignored and regenerated; tags carry the env prefix
-(`windows-c-vX.Y.Z`, `macos-avalonia-vX.Y.Z`, `macos-swift-vX.Y.Z`);
+(`windows-c-vX.Y.Z`, `macos-avalonia-vX.Y.Z`, `macos-swift-vX.Y.Z`,
+`windows-python-vX.Y.Z`, `macos-python-vX.Y.Z`);
 release notes in English. Details in `AGENTS.md`.
 
 ## Screenshots
@@ -73,6 +76,8 @@ last 2 per environment:
 - `windows-c-vX.Y.Z` + `MandelF-Setup-X.Y.Z-win-x64.exe`
 - `macos-avalonia-vX.Y.Z` + `MandelF-avalonia-X.Y.Z-arm64.dmg`
 - `macos-swift-vX.Y.Z` + `MandelF-swift-X.Y.Z-arm64.dmg`
+- `windows-python-vX.Y.Z` + `MandelF-python-X.Y.Z-win64.zip`
+- `macos-python-vX.Y.Z` + `MandelF-python-X.Y.Z-arm64.dmg`
 
 ## License
 

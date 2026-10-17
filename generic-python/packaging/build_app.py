@@ -28,7 +28,7 @@ DMGDIR = os.path.join(tempfile.gettempdir(), "mandelbrot_dmg")
 # vengono rimosse automaticamente a fine build.
 KEEP_N = 3
 
-with open(os.path.join(HERE, "mandel.py"), encoding="utf-8") as _f:
+with open(os.path.join(HERE, "..", "source", "mandel.py"), encoding="utf-8") as _f:
     _head = _f.read(4096)
 VERSION = re.search(r"VERSIONE:\s*([\d.]+)", _head).group(1)
 
@@ -53,7 +53,7 @@ def keep_last_n_dist(n=KEEP_N):
     for fn in os.listdir(d):
         # v6.0: accetta anche versioni a 2 parti (es. v6.0 oltre a X.Y.Z);
         # il patch mancante vale 0 ai fini dell'ordinamento.
-        m = re.match(r"mandelbrot-v(\d+)\.(\d+)(?:\.(\d+))?-(win64|macos)\.", fn, re.IGNORECASE)
+        m = re.match(r"mandelf-python-v(\d+)\.(\d+)(?:\.(\d+))?-(win64|arm64)\.", fn, re.IGNORECASE)
         if m:
             ver = (int(m.group(1)), int(m.group(2)), int(m.group(3) or 0))
             plat = m.group(4).lower()
@@ -97,14 +97,14 @@ if r.returncode != 0:
 
 # 3) Post-build
 if IS_WIN32:
-    app_dir = os.path.join(DISTDIR, "Mandelbrot")
-    exe = os.path.join(app_dir, "Mandelbrot.exe")
+    app_dir = os.path.join(DISTDIR, "MandelF")
+    exe = os.path.join(app_dir, "MandelF.exe")
     if not os.path.isfile(exe):
         fail("app non trovata dopo la build (distpath=%s)" % DISTDIR)
     # Zip sul progetto/NAS: l'app resta sul disco di sistema, sul NAS va solo lo zip
     out_dir = os.path.join(HERE, "dist")
     os.makedirs(out_dir, exist_ok=True)
-    base = os.path.join(out_dir, "Mandelbrot-v%s-win64" % VERSION)
+    base = os.path.join(out_dir, "MandelF-python-v%s-win64" % VERSION)
     if os.path.exists(base + ".zip"):
         os.remove(base + ".zip")
     zip_path = shutil.make_archive(base, "zip",
@@ -113,7 +113,7 @@ if IS_WIN32:
     print("OK: exe =", exe)
     print("OK: zip =", zip_path, "(progetto/NAS)")
 elif IS_DARWIN:
-    app = os.path.join(DISTDIR, "Mandelbrot.app")
+    app = os.path.join(DISTDIR, "MandelF.app")
     if not os.path.isdir(app):
         fail("app non trovata dopo la build (distpath=%s)" % DISTDIR)
     run(["codesign", "--force", "--deep", "--sign", "-", app])
@@ -122,14 +122,14 @@ elif IS_DARWIN:
     if os.path.isdir(DMGDIR):
         shutil.rmtree(DMGDIR)
     os.makedirs(DMGDIR)
-    shutil.copytree(app, os.path.join(DMGDIR, "Mandelbrot.app"), symlinks=True)
+    shutil.copytree(app, os.path.join(DMGDIR, "MandelF.app"), symlinks=True)
     os.symlink("/Applications", os.path.join(DMGDIR, "Applications"))
     out_dir = os.path.join(HERE, "dist")
     os.makedirs(out_dir, exist_ok=True)
-    dmg_base = os.path.join(out_dir, "Mandelbrot-v%s-macos" % VERSION)
+    dmg_base = os.path.join(out_dir, "MandelF-python-v%s-arm64" % VERSION)
     if os.path.exists(dmg_base + ".dmg"):
         os.remove(dmg_base + ".dmg")
-    run(["hdiutil", "create", "-volname", "Mandelbrot", "-srcfolder", DMGDIR,
+    run(["hdiutil", "create", "-volname", "MandelF-python", "-srcfolder", DMGDIR,
          "-ov", "-format", "UDZO", dmg_base + ".dmg"])
     if os.path.isdir(DMGDIR):
         shutil.rmtree(DMGDIR)

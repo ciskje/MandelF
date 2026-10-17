@@ -94,6 +94,10 @@ One channel per environment, tags always carry the environment prefix:
   Command in `macos-avalonia/AGENTS.md`.
 - `macos-swift`: tag `macos-swift-vX.Y.Z` + `MandelF-swift-X.Y.Z-arm64.dmg`
   (`.app` bundle + Applications symlink, ad-hoc signed). Command in `macos-swift/AGENTS.md`.
+- `windows-python`: tag `windows-python-vX.Y.Z` + `MandelF-python-X.Y.Z-win64.zip`.
+  Command in `windows-python/AGENTS.md`.
+- `macos-python`: tag `macos-python-vX.Y.Z` + `MandelF-python-X.Y.Z-arm64.dmg`.
+  Command in `macos-python/AGENTS.md`.
 - Every version bump is published (tag + release with artifact), otherwise
   Latest lags behind the code. Keep the **last 2 releases per environment**.
 - Release notes **always in English**.

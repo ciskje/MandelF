@@ -1,7 +1,7 @@
 # -*- mode: python ; coding: utf-8 -*-
 # Ricetta PyInstaller per l'app Mandelbrot self-contained (one-dir), multipiattaforma:
-#   - macOS   -> dist/Mandelbrot.app             (GPU Metal/pyobjc + Vulkan/wgpu, firma ad-hoc)
-#   - Windows -> dist/Mandelbrot/Mandelbrot.exe  (CPU sempre; GPU NVIDIA se l'utente
+#   - macOS   -> dist/MandelF.app             (GPU Metal/pyobjc + Vulkan/wgpu, firma ad-hoc)
+#   - Windows -> dist/MandelF/MandelF.exe  (CPU sempre; GPU NVIDIA se l'utente
 #           installa driver + runtime CUDA; GPU AMD/NVIDIA/Intel via Vulkan/wgpu)
 # Dipendenze comuni di mandel.py: numpy, Pillow(ImageTk), tkinter; fast path CPU
 # numba+llvmlite (l'app degrada su numpy se assente). I backend GPU sono rilevati
@@ -21,7 +21,7 @@ from PyInstaller.utils.hooks import collect_all, collect_submodules
 HERE = os.path.dirname(os.path.abspath(SPEC))
 
 # Versione unica di verita': letta dall'header di mandel.py (# VERSIONE: X.Y.Z).
-with open(os.path.join(HERE, "mandel.py"), encoding="utf-8") as _f:
+with open(os.path.join(HERE, "..", "source", "mandel.py"), encoding="utf-8") as _f:
     _head = _f.read(4096)
 VERSION = re.search(r"VERSIONE:\s*([\d.]+)", _head).group(1)
 
@@ -129,8 +129,8 @@ elif IS_WIN32:
                 OS=0x40004, fileType=0x1, subtype=0x0, date=0),
             varinfo=[versioninfo.StringTable(
                 "040904B0",
-                strings=[versioninfo.StringStruct("FileDescription", "Mandelbrot"),
-                         versioninfo.StringStruct("ProductName", "Mandelbrot"),
+                strings=[versioninfo.StringStruct("FileDescription", "MandelF"),
+                         versioninfo.StringStruct("ProductName", "MandelF"),
                          versioninfo.StringStruct("FileVersion", VERSION),
                          versioninfo.StringStruct("ProductVersion", VERSION)])])
     except Exception:
@@ -147,7 +147,7 @@ else:
 block_cipher = None
 
 a = Analysis(
-    ["mandel.py"],
+    ["../source/mandel.py"],
     pathex=[],
     binaries=binaries,
     datas=datas,
@@ -168,7 +168,7 @@ exe = EXE(
     a.scripts,
     [],
     exclude_binaries=True,
-    name="Mandelbrot",
+    name="MandelF",
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
@@ -181,12 +181,12 @@ exe = EXE(
 if IS_DARWIN:
     app = BUNDLE(
         exe, a.binaries, a.datas,
-        name="Mandelbrot.app",
+        name="MandelF.app",
         icon="mandelbrot.icns",
         bundle_id="it.mandelbrot.app",
         info_plist={
-            "CFBundleName": "Mandelbrot",
-            "CFBundleDisplayName": "Mandelbrot",
+            "CFBundleName": "MandelF",
+            "CFBundleDisplayName": "MandelF",
             "CFBundleShortVersionString": VERSION,
             "CFBundleVersion": VERSION,
             "NSHighResolutionCapable": True,
@@ -199,5 +199,5 @@ else:
         exe, a.binaries, a.datas,
         strip=False,
         upx=False,
-        name="Mandelbrot",
+        name="MandelF",
     )
