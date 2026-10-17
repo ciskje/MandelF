@@ -36,9 +36,9 @@ release notes in English. Details in `AGENTS.md`.
 
 ## Screenshots
 
-| Main window | Benchmark dialog |
-|---|---|
-| ![windows-c](windows-c/screen1.png) | ![benchmark](windows-c/screenshots/dialog-benchmark.png) |
+![Main window](windows-c/screen1.png)
+
+![Benchmark dialog](windows-c/screenshots/dialog-benchmark.png)
 
 ## Build
 
