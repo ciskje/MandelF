@@ -17,10 +17,15 @@ in that environment.
 
 ## Pending
 
-- [ ] `macos-swift`: benchmark chart reference bars from windows-c
-  (Risultato + CUDA/DirectX/CPU history, same values and colors).
+- [ ] `windows-c`: adopt the repo layout scheme (`packaging/` + `dist/`
+  for the setup exe, scripts updated; on the Windows machine).
 - [ ] `generic`: create GitHub repo `ciskje/MandelF` and push `main`
   (needs explicit user request).
+
+## Done
+
+- [x] `macos-swift`: benchmark chart with windows-c reference bars
+  (Risultato + CUDA/DirectX/CPU, no-overlap layout).
 
 ## Done
 

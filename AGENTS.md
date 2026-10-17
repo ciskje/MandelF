@@ -14,6 +14,27 @@ behavior). Platform details (build, gotchas, paths) live in
 This file holds the shared workflow, versioning, releases, and the full
 normative specification. Build on each machine **only for its own platform(s)**.
 
+## Repository layout (all environments)
+
+Every environment folder follows the same scheme:
+
+```text
+<env>/
+  AGENTS.md README.md CHANGELOG.md TODO.md   // docs (SPECS.md/QUESTIONS.md where present)
+  <code>/          // toolchain convention, do NOT rename:
+                  //   MandelbrotViewer/ (+ .Tests/) for the C# ports,
+                  //   Sources/ for Swift (SwiftPM layout)
+  packaging/      // Info.plist/.iss + make script (reproducible artifacts)
+  dist/           // final artifacts only (.app+dmg / setup.exe), regenerable,
+                  //   gitignored — keep the last 2 per environment locally
+  screenshots/    // README images
+```
+
+Regenerable and always gitignored (root `.gitignore`): `bin/`, `obj/`,
+`.build/`, `published/` (dotnet intermediate), `dist/` contents.
+`windows-c/` predates the scheme: `packaging/` + `dist/` adoption happens
+on the Windows machine (see TODO.md).
+
 ## Change workflow
 
 1. A change request updates the shared spec/intents first (§1–§8 below).
