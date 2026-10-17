@@ -30,6 +30,9 @@ in that environment.
 
 ## Done
 
+- [x] `macos-python`: publish `macos-python-v7.3.0` (DMG built on this Mac,
+  release with asset on GitHub).
+
 - [x] `macos-swift`: benchmark chart with windows-c reference bars
   (Risultato + CUDA/DirectX/CPU, no-overlap layout).
 - [x] `macos-swift`: full SPEC CPU parity + Metal GPU v0.3.0 (MSL float
