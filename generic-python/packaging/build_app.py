@@ -43,10 +43,9 @@ def fail(msg):
     sys.exit(1)
 
 
-def keep_last_n_dist(n=KEEP_N):
+def keep_last_n_dist(n, d):
     # Tieni le ultime n versioni (X.Y.Z) PER PIATTAFORMA dei distributivi
-    # in dist/ (progetto/NAS); rimuovi gli artefatti delle versioni piu' vecchie.
-    d = os.path.join(HERE, "dist")
+    # in dist/; rimuovi gli artefatti delle versioni piu' vecchie.
     if not os.path.isdir(d):
         return
     items = []
@@ -102,7 +101,7 @@ if IS_WIN32:
     if not os.path.isfile(exe):
         fail("app non trovata dopo la build (distpath=%s)" % DISTDIR)
     # Zip sul progetto/NAS: l'app resta sul disco di sistema, sul NAS va solo lo zip
-    out_dir = os.path.join(HERE, "dist")
+    out_dir = os.path.join(HERE, "..", "..", "windows-python", "dist")
     os.makedirs(out_dir, exist_ok=True)
     base = os.path.join(out_dir, "MandelF-python-v%s-win64" % VERSION)
     if os.path.exists(base + ".zip"):
@@ -124,7 +123,7 @@ elif IS_DARWIN:
     os.makedirs(DMGDIR)
     shutil.copytree(app, os.path.join(DMGDIR, "MandelF.app"), symlinks=True)
     os.symlink("/Applications", os.path.join(DMGDIR, "Applications"))
-    out_dir = os.path.join(HERE, "dist")
+    out_dir = os.path.join(HERE, "..", "..", "macos-python", "dist")
     os.makedirs(out_dir, exist_ok=True)
     dmg_base = os.path.join(out_dir, "MandelF-python-v%s-arm64" % VERSION)
     if os.path.exists(dmg_base + ".dmg"):
@@ -139,4 +138,4 @@ else:
     fail("piattaforma non supportata per la build: %s" % sys.platform)
 
 # 4) Cleanup dist/ (progetto/NAS): regola generale, tenere solo le ultime KEEP_N versioni
-keep_last_n_dist(KEEP_N)
+keep_last_n_dist(KEEP_N, out_dir)
