@@ -21,8 +21,8 @@ in that environment.
   windows-c changes since 2.22.7, then bump `<Version>` + AppVersion.cs).
 - [ ] `windows-c`: adopt the repo layout scheme (`packaging/` + `dist/`
   for the setup exe, scripts updated; on the Windows machine).
-- [ ] `generic`: push tags + publish GitHub releases with artifacts
-  (macOS DMGs ready; windows-c exe from the Windows machine).
+- [ ] `windows-c`: publish `windows-c-v2.24.2` GitHub release with setup exe
+  (tag pushed; build + attach from the Windows machine).
 
 ## Done
 
