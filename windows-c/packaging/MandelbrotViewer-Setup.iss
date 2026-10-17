@@ -10,7 +10,7 @@
   #define MyAppVersion MyAppVersion4
 #endif
 #define MyAppPublisher "ciskje"
-#define MyAppURL "https://github.com/ciskje/MandelC"
+#define MyAppURL "https://github.com/ciskje/MandelF"
 #define MyAppExeName "MandelF.exe"
 
 [Setup]

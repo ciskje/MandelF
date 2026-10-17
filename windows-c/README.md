@@ -1,4 +1,4 @@
-# Mandelbrot Viewer (MandelC)
+# Mandelbrot Viewer (MandelF)
 
 > This project is an LLM test: `SPECS.md` was written by humans as a complete,
 > self-contained specification, so it can be used to recreate the application
