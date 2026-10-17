@@ -22,7 +22,11 @@ in that environment.
 - [ ] `windows-c`: adopt the repo layout scheme (`packaging/` + `dist/`
   for the setup exe, scripts updated; on the Windows machine).
 - [ ] `windows-c`: publish `windows-c-v7.3.0` GitHub release with setup exe
-  (tag will be pushed; build + attach from the Windows machine).
+  (tag pushed; build + attach from the Windows machine).
+- [ ] `windows-python`: publish `windows-python-v7.3.0` (win64 zip via
+  `generic-python/packaging/build_app.py` on Windows; tag already pushed).
+- [ ] `macos-python`: publish `macos-python-v7.3.0` (dmg via
+  `generic-python/packaging/build_app.py` on this Mac; tag already pushed).
 
 ## Done
 
