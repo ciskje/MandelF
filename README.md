@@ -6,7 +6,7 @@ Interactive Mandelbrot set viewer, one repo with one folder per environment:
 - `macos-avalonia/` — C# / Avalonia 11 / .NET 8, macOS arm64 (v2.22.7).
 - `macos-swift/` — native SwiftUI / Swift 6, macOS 14+, Apple Silicon (v0.1.0).
 
-Shared math/render contracts: `SPEC_FOR_LLM_PLATFORM_AGNOSTIC.md`.
+Shared math/render contracts: `AGENTS.md` (§1–§8).
 Workflow, versioning and releases: `AGENTS.md`. Change tracker: `TODO.md`.
 
 ## Provenance

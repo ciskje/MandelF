@@ -17,6 +17,9 @@ in that environment.
 
 ## Pending
 
+- [ ] `macos-swift`: feature parity with siblings (palette, auto-iter, history,
+  settings, export, benchmark, video — prioritize below).
+
 - [ ] `macos-avalonia`: install .NET 8 SDK (arm64) on this Mac, then
   `dotnet build MandelbrotViewer` + `dotnet test MandelbrotViewer.Tests`.
 - [ ] `generic`: create GitHub repo `ciskje/MandelF` and push `main`

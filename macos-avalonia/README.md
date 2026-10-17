@@ -1,6 +1,6 @@
 # MandelbrotViewer (macOS / Avalonia port)
 
-Replica platform-agnostic di **../SPEC_FOR_LLM_PLATFORM_AGNOSTIC.md** v2.22.7.
+Replica platform-agnostic di **../AGENTS.md** (§1–§8) v2.22.7.
 Scelte implementatore (§1.6): target **macOS arm64**, UI **Avalonia 11**,
 GPU **Metal** (fase pendente, fallback CPU per §4.9).
 
