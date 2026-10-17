@@ -4,6 +4,11 @@ import MandelCore
 import SwiftUI
 
 /// Main state + render orchestration (§5). All mutations on the main actor.
+/// Engine selection (SPEC §5.10, §5.2 row 1).
+public enum EngineSel: Hashable {
+    case cpu, gpu
+}
+
 @MainActor final class ViewerModel: ObservableObject {
     // Settings-backed controls
     @Published var maxIterManual = Spec.defaultIter
@@ -11,6 +16,9 @@ import SwiftUI
     @Published var palette = 0
     @Published var aaIndex = 0
     @Published var useDouble = true
+    @Published var engineSel: EngineSel = .cpu
+    @Published var gpuChoice = ""
+    var metal: MetalEngine?
     @Published var julia = false
     @Published var jcx = Spec.defaultJcx
     @Published var jcy = Spec.defaultJcy
@@ -40,13 +48,18 @@ import SwiftUI
         maxIterManual = s.maxIter; iterAuto = s.iterAuto; palette = s.palette
         aaIndex = s.aaIndex; useDouble = !s.single
         julia = s.julia; jcx = s.jcx; jcy = s.jcy
+        gpuChoice = s.gpu
         AppLog.shared.add("settings loaded")
+        if s.engine == "Gpu" {
+            selectEngine(.gpu) // checked only if init succeeds (§5.10)
+        }
     }
 
     func saveSettings() {
         var s = AppSettings()
         s.iterAuto = iterAuto; s.maxIter = maxIterManual; s.palette = palette
-        s.aaIndex = aaIndex; s.engine = "Cpu"; s.single = !useDouble
+        s.aaIndex = aaIndex; s.engine = engineSel == .gpu ? "Gpu" : "Cpu"
+        s.gpu = gpuChoice; s.single = !useDouble
         s.julia = julia; s.jcx = jcx; s.jcy = jcy
         Store.save(s)
     }
@@ -78,6 +91,58 @@ import SwiftUI
         canForward = history.canForward
     }
 
+    // MARK: - Engine selection (§5.10)
+
+    /// GPU selected only if init succeeds; else revert to CPU with a reason.
+    func selectEngine(_ e: EngineSel) {
+        if e == .gpu {
+            let eng = metal ?? MetalEngine()
+            if eng.tryInitialize(deviceName: gpuChoice.isEmpty ? nil : gpuChoice) {
+                metal = eng
+                engineSel = .gpu
+                useDouble = false // float-only GPU (§2.6, §4)
+                status = "GPU on '\(eng.deviceShortName)' ready."
+            } else {
+                metal = nil
+                engineSel = .cpu
+                let want = gpuChoice.isEmpty ? "Auto" : gpuChoice
+                status = "GPU on '\(want)': \(eng.lastError) — switching to CPU"
+                AppLog.shared.add("GPU init failed: \(eng.lastError)")
+            }
+        } else {
+            engineSel = .cpu
+        }
+        requestRender(w: Int(viewW), h: Int(viewH), preview: false)
+    }
+
+    func selectDevice(_ name: String) {
+        gpuChoice = name
+        if engineSel == .gpu { selectEngine(.gpu) } // re-init or fall back
+    }
+
+    func activeMetal() -> MetalEngine? {
+        engineSel == .gpu ? metal : nil
+    }
+
+    /// Render on the active engine. fellBack=true means the GPU failed and
+    /// the CPU result was returned instead (§4.9).
+    nonisolated static func renderOn(_ eng: MetalEngine?,
+                                     _ p: RenderParams) -> (px: [UInt8]?, fellBack: Bool) {
+        if let eng {
+            if let px = eng.render(p) { return (px, false) }
+            return (Fractal.render(p), true)
+        }
+        return (Fractal.render(p), false)
+    }
+
+    func engineLabel() -> String {
+        if engineSel == .gpu, let m = metal {
+            return "GPU-float \(m.deviceShortName)"
+                + (MetalEngine.wantsDouble(scale: scale) ? " [beyond float!]" : "")
+        }
+        return "CPU-" + (useDouble ? "double" : "float")
+    }
+
     func apply(_ z: ViewZone, push: Bool) {
         if push { pushHistory(z) }
         centerX = z.centerX; centerY = z.centerY; scale = z.scale
@@ -106,12 +171,16 @@ import SwiftUI
                                   aa: preview ? 1 : aa, useDouble: useDouble,
                                   julia: julia, jcx: jcx, jcy: jcy)
         let auto = iterAuto
+        let eng = activeMetal()
         computing = true
         status = "Computing \(preview ? "preview " : "")\(rw)x\(rh), iter=\(params.maxIter)..."
         Task.detached(priority: .userInitiated) {
-            let px = Fractal.render(params)
+            let (px, fellBack) = Self.renderOn(eng, params)
             await MainActor.run {
                 guard t == self.token, let px, !px.isEmpty else { return }
+                if fellBack {
+                    self.status = "GPU render failed — falling back to CPU"
+                }
                 if let cg = Png.cgImage(rgba: px, width: rw, height: rh) {
                     self.image = NSImage(cgImage: cg,
                                          size: NSSize(width: rw, height: rh))
@@ -140,7 +209,7 @@ import SwiftUI
         s += " | iter \(effIter)" + (auto ? " (auto)" : "")
         s += " | \(Palette.names[palette])"
         if aa > 1 { s += " AA\(aa)x" }
-        s += " | engine CPU-" + (useDouble ? "double" : "float")
+        s += " | engine " + engineLabel()
         if julia { s += String(format: " | Julia c=%.4f %.4fi", jcx, jcy) }
         if preview { s += " (preview)" }
         return s
@@ -217,7 +286,8 @@ import SwiftUI
                                   maxIter: effIter, palette: palette, aa: 1,
                                   useDouble: useDouble, julia: julia,
                                   jcx: jcx, jcy: jcy)
-        if let px = Fractal.render(params),
+        let (px, _) = Self.renderOn(activeMetal(), params)
+        if let px = px,
            let cg = Png.cgImage(rgba: px, width: w, height: h) {
             image = NSImage(cgImage: cg, size: NSSize(width: w, height: h))
         }
@@ -293,12 +363,14 @@ import SwiftUI
                              maxIter: effIter, palette: palette, aa: aa,
                              useDouble: useDouble, julia: julia,
                              jcx: jcx, jcy: jcy)
+        let eng = activeMetal()
         Task.detached(priority: .userInitiated) {
-            guard let px = Fractal.render(p) else { return }
+            let (px, fellBack) = Self.renderOn(eng, p)
+            guard let px = px else { return }
             let ok = Png.write(rgba: px, width: p.width, height: p.height, to: url)
             await MainActor.run {
                 self.status = ok ? "Saved \(url.lastPathComponent)"
-                    : "Save PNG failed."
+                    + (fellBack ? " (CPU fallback)" : "") : "Save PNG failed."
             }
         }
     }

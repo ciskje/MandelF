@@ -39,10 +39,40 @@ case "--bench-cpu":
     }
     print(String(format: "best: %.1f Mpixel/s", best))
 case "--diag-gpu", "--bench-gpu":
-    // No GPU engine in this build (Metal pending): report, don't crash (§4.9).
-    print("GPU engine: not available in this build (Metal pending)")
-    print("devices: (none)")
-    print("CPU: \(Diagnostics.cpuName()) — use --bench-cpu")
+    let names = MetalEngine.adapterNames()
+    print("devices: \(names.isEmpty ? "(none)" : names.joined(separator: ", "))")
+    let want: String? = (positional?.isEmpty ?? true) ? nil : positional
+    let eng = MetalEngine()
+    guard eng.tryInitialize(deviceName: want) else {
+        print("IsReady: false  LastError: \(eng.lastError)")
+        exit(1)
+    }
+    print("IsReady: true  device: \(eng.deviceName)")
+    print("details: \(eng.details)")
+    if flag == "--diag-gpu" {
+        // Headless init test: 800x600 render, 200 iterations (§6.6).
+        let p = RenderParams(width: 800, height: 600, centerX: -0.5, centerY: 0,
+                             scale: Spec.fullScale, maxIter: 200,
+                             palette: 0, aa: 1, useDouble: false)
+        print("test render: \(eng.render(p) != nil ? "ok" : "FAILED: \(eng.lastError)")")
+        exit(eng.render(p) != nil ? 0 : 1)
+    }
+    var best = 0.0
+    for run in 1 ... 3 {
+        guard let r = eng.bench(maxIter: Benchmark.maxIter, tick: { el, _ in
+            fputs(String(format: "run %d: %.1fs...\n", run, el), stderr)
+            return true
+        }, isCancelled: { false }) else { exit(1) }
+        let mpix = Double(r.frames * Benchmark.samples) / r.seconds / 1e6
+        best = max(best, mpix)
+        print(String(format: "run %d: %.1f Mpixel/s (%d frames in %.2fs)", run, mpix, r.frames, r.seconds))
+        if let csv {
+            try? Benchmark.csvAppend(to: URL(fileURLWithPath: csv), engine: "GPU",
+                                     device: eng.deviceShortName, precision: "32-bit",
+                                     run: run, frames: r.frames, seconds: r.seconds, mpixelS: mpix)
+        }
+    }
+    print(String(format: "best: %.1f Mpixel/s", best))
 default:
     usage()
 }

@@ -48,7 +48,7 @@ public enum Store {
         if !s.jcx.isFinite || !s.jcy.isFinite {
             s.jcx = Spec.defaultJcx; s.jcy = Spec.defaultJcy
         }
-        if s.engine != "Cpu" { s.engine = "Cpu" } // no GPU engine in this build
+        if s.engine != "Cpu" && s.engine != "Gpu" { s.engine = "Cpu" }
         return s
     }
 

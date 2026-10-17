@@ -20,6 +20,12 @@ struct MandelApp: App {
         WindowGroup("Mandelbrot Set Viewer v\(AppVersion.display)") {
             ContentView(model: model, sheet: $sheet, favorites: $favorites)
                 .frame(minWidth: 640, minHeight: 480)
+                .onAppear {
+                    // Bare SPM executable: become a regular app
+                    // (dock icon, menu bar) once NSApp exists.
+                    NSApp.setActivationPolicy(.regular)
+                    NSApp.activate(ignoringOtherApps: true)
+                }
                 .onDisappear { model.saveSettings() }
                 .onChange(of: phase) {
                     if phase == .background { model.saveSettings() }
@@ -199,9 +205,26 @@ struct ContentView: View {
     private var toolbarRow1: some View {
         HStack(spacing: 8) {
             Text("Engine:")
-            Text("CPU").help("CPU multicore engine (always available)")
-            Text("GPU").foregroundStyle(.secondary)
-                .help("GPU engine: not available in this build (Metal pending)")
+            Picker("", selection: $model.engineSel) {
+                Text("CPU").tag(EngineSel.cpu)
+                Text("GPU").tag(EngineSel.gpu)
+            }
+            .pickerStyle(.segmented)
+            .frame(width: 130)
+            .help("CPU multicore engine (always available) / GPU engine: real-time GPU rendering (uses the GPU available on this machine)")
+            .onChange(of: model.engineSel) { model.selectEngine(model.engineSel) }
+            if model.engineSel == .gpu {
+                Text("GPU:")
+                Picker("", selection: $model.gpuChoice) {
+                    Text("Auto").tag("")
+                    ForEach(MetalEngine.adapterNames(), id: \.self) { name in
+                        Text(name).tag(name)
+                    }
+                }
+                .frame(width: 200)
+                .help("Video card to use (Auto = the most powerful)")
+                .onChange(of: model.gpuChoice) { model.selectDevice(model.gpuChoice) }
+            }
             Text("Precision:")
             Picker("", selection: $model.useDouble) {
                 Text("32").tag(false)
@@ -209,8 +232,9 @@ struct ContentView: View {
             }
             .pickerStyle(.segmented)
             .frame(width: 90)
-            .help("CPU precision 32-bit (float): faster, less precise. / 64-bit (double): more precise, slower.")
+            .help("CPU/GPU precision 32-bit (float): faster, less precise. / 64-bit (double): more precise, slower. (GPU is float-only)")
             .onChange(of: model.useDouble) {
+                if model.engineSel == .gpu { model.useDouble = false }
                 model.requestRender(w: Int(model.viewW), h: Int(model.viewH),
                                     preview: false)
             }

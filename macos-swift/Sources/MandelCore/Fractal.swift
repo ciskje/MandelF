@@ -40,11 +40,12 @@ public struct RenderParams {
 }
 
 /// CPU engine: 4 code paths (scalar/vector × float/double, §3.2).
-/// Vector paths process lanes in blocks of 4 with the same per-lane math,
-/// so double-vector output is bit-identical to scalar double.
+/// Vector paths process rows with genuine SIMD4 lanes and alive masks;
+/// scratch arrays are allocated once per row (never per block), so the
+/// double vector path is bit-identical to scalar double at full speed.
 public enum Fractal {
-    /// SIMD is always present on Apple Silicon; kept as a switch so the
-    /// scalar fallbacks stay selectable (mirrors the reference selection).
+    /// Always true on Apple Silicon; the scalar fallbacks stay selectable
+    /// (mirrors the reference path selection).
     public static var simdAvailable = true
 
     /// SPEC §2.5 cardioid + period-2 bulb, always in double.
@@ -85,6 +86,78 @@ public enum Fractal {
         return (i, zx2 + zy2)
     }
 
+    /// Whole-frame or tile render (§2.8, §3.1). RGBA bytes, nil if cancelled.
+    /// Rows run on all cores (chunk = max(8, h/(procs*8))); each row uses the
+    /// scalar or 4-lane vector core by precision and simdAvailable.
+    public static func render(_ p: RenderParams) -> [UInt8]? {
+        let k = p.aa
+        let lut = Palette.lut(palette: p.palette, maxIter: p.maxIter)
+        let invMax = 1.0 / Double(p.maxIter)
+        let pixelSize = p.scale / Double(p.fullWidth * k)
+        let originX = p.centerX - Double(p.fullWidth * k) * 0.5 * pixelSize
+        let topY = p.centerY - Double(p.fullHeight * k) * 0.5 * pixelSize
+        var out = [UInt8](repeating: 0, count: p.width * p.height * 4)
+        let procs = max(1, ProcessInfo.processInfo.activeProcessorCount)
+        let chunk = max(8, p.height / (procs * 8)) // §3.1
+        let vector = simdAvailable
+        let stop = Locked(false)
+        out.withUnsafeMutableBufferPointer { buf in
+            guard let base = buf.baseAddress else { return }
+            DispatchQueue.concurrentPerform(
+                iterations: (p.height + chunk - 1) / chunk) { c in
+                if p.isCancelled() || stop.value { return }
+                let y0 = c * chunk
+                let y1 = min(y0 + chunk, p.height)
+                for y in y0 ..< y1 {
+                    if vector, p.useDouble {
+                        renderRowVD(y: y, p: p, k: k, lut: lut, invMax: invMax,
+                                    originX: originX, topY: topY,
+                                    pixelSize: pixelSize, base: base)
+                    } else if vector {
+                        renderRowVF(y: y, p: p, k: k, lut: lut, invMax: invMax,
+                                    originX: originX, topY: topY,
+                                    pixelSize: pixelSize, base: base)
+                    } else {
+                        renderRowScalar(y: y, p: p, k: k, lut: lut,
+                                        invMax: invMax, originX: originX,
+                                        topY: topY, pixelSize: pixelSize,
+                                        base: base)
+                    }
+                }
+                if p.isCancelled() { stop.value = true }
+            }
+        }
+        if p.isCancelled() || stop.value { return nil }
+        return out
+    }
+
+    static func renderRowScalar(y: Int, p: RenderParams, k: Int, lut: [UInt32],
+                                invMax: Double, originX: Double, topY: Double,
+                                pixelSize: Double, base: UnsafeMutablePointer<UInt8>) {
+        for x in 0 ..< p.width {
+            var r = 0, g = 0, b = 0
+            for sy in 0 ..< k {
+                for sx in 0 ..< k {
+                    let gbx = (p.offsetX + x) * k + sx
+                    let gby = (p.offsetY + y) * k + sy
+                    let px = originX + Double(gbx) * pixelSize
+                    let py = topY + Double(gby) * pixelSize
+                    let (cr, cg, cb): (UInt8, UInt8, UInt8)
+                    if p.useDouble {
+                        (cr, cg, cb) = colorD(px: px, py: py, p: p, lut: lut,
+                                              invMax: invMax)
+                    } else {
+                        (cr, cg, cb) = colorF(px: px, py: py, p: p, lut: lut,
+                                              invMax: invMax)
+                    }
+                    r += Int(cr); g += Int(cg); b += Int(cb)
+                }
+            }
+            writePixel(base: base, width: p.width, x: x, y: y,
+                       r: r, g: g, b: b, n: k * k)
+        }
+    }
+
     static func colorD(px: Double, py: Double, p: RenderParams,
                        lut: [UInt32], invMax: Double) -> (UInt8, UInt8, UInt8) {
         var ccx = px, ccy = py, z0x = 0.0, z0y = 0.0
@@ -117,61 +190,218 @@ public enum Fractal {
         return Palette.lookup(lut, smooth: Double(smooth), invMaxIter: invMax)
     }
 
-    /// Whole-frame or tile render (§2.8, §3.1). RGBA bytes, nil if cancelled.
-    public static func render(_ p: RenderParams) -> [UInt8]? {
-        let k = p.aa
-        let lut = Palette.lut(palette: p.palette, maxIter: p.maxIter)
-        let invMax = 1.0 / Double(p.maxIter)
-        let pixelSize = p.scale / Double(p.fullWidth * k)
-        let originX = p.centerX - Double(p.fullWidth * k) * 0.5 * pixelSize
-        let topY = p.centerY - Double(p.fullHeight * k) * 0.5 * pixelSize
-        var out = [UInt8](repeating: 0, count: p.width * p.height * 4)
-        let procs = max(1, ProcessInfo.processInfo.activeProcessorCount)
-        let chunk = max(8, p.height / (procs * 8)) // §3.1
-        let lanes = simdAvailable ? 4 : 1
-        let stop = Locked(false)
-        out.withUnsafeMutableBufferPointer { buf in
-            guard let base = buf.baseAddress else { return }
-            DispatchQueue.concurrentPerform(
-                iterations: (p.height + chunk - 1) / chunk) { c in
-                if p.isCancelled() || stop.value { return }
-                let y0 = c * chunk
-                let y1 = min(y0 + chunk, p.height)
-                for y in y0 ..< y1 {
-                    for x0 in stride(from: 0, to: p.width, by: lanes) {
-                        for x in x0 ..< min(x0 + lanes, p.width) {
-                            var r = 0, g = 0, b = 0
-                            for sy in 0 ..< k {
-                                for sx in 0 ..< k {
-                                    let gbx = (p.offsetX + x) * k + sx
-                                    let gby = (p.offsetY + y) * k + sy
-                                    let px = originX + Double(gbx) * pixelSize
-                                    let py = topY + Double(gby) * pixelSize
-                                    let (cr, cg, cb): (UInt8, UInt8, UInt8)
-                                    if p.useDouble {
-                                        (cr, cg, cb) = colorD(px: px, py: py, p: p,
-                                                              lut: lut, invMax: invMax)
-                                    } else {
-                                        (cr, cg, cb) = colorF(px: px, py: py, p: p,
-                                                              lut: lut, invMax: invMax)
-                                    }
-                                    r += Int(cr); g += Int(cg); b += Int(cb)
-                                }
-                            }
-                            let n = k * k
-                            let o = (y * p.width + x) * 4
-                            base[o] = UInt8(r / n)
-                            base[o + 1] = UInt8(g / n)
-                            base[o + 2] = UInt8(b / n)
-                            base[o + 3] = 255
-                        }
+    /// Vector double row: one scratch set per row, SIMD4 blocks with alive
+    /// masks, interior lanes seeded done. Bit-identical to scalar double.
+    static func renderRowVD(y: Int, p: RenderParams, k: Int, lut: [UInt32],
+                            invMax: Double, originX: Double, topY: Double,
+                            pixelSize: Double, base: UnsafeMutablePointer<UInt8>) {
+        let w = p.width
+        var it = [Int](repeating: 0, count: w)
+        var md = [Double](repeating: 4.0, count: w)
+        var al = [Bool](repeating: false, count: w)
+        var zxr = [Double](repeating: 0, count: w)
+        var zyr = [Double](repeating: 0, count: w)
+        var ccx = [Double](repeating: 0, count: w)
+        var ccy = [Double](repeating: 0, count: w)
+        var rA = [Int](repeating: 0, count: w)
+        var gA = [Int](repeating: 0, count: w)
+        var bA = [Int](repeating: 0, count: w)
+        let four = SIMD4<Double>(repeating: 4.0)
+        for sy in 0 ..< k {
+            let gby = (p.offsetY + y) * k + sy
+            let py = topY + Double(gby) * pixelSize
+            for sx in 0 ..< k {
+                var nAlive = 0
+                for x in 0 ..< w {
+                    let gbx = (p.offsetX + x) * k + sx
+                    let px = originX + Double(gbx) * pixelSize
+                    if p.julia {
+                        zxr[x] = px; zyr[x] = py
+                        ccx[x] = p.jcx; ccy[x] = p.jcy
+                        al[x] = true; it[x] = p.maxIter; nAlive += 1
+                    } else if interior(px: px, py: py) {
+                        al[x] = false; it[x] = p.maxIter
+                    } else {
+                        zxr[x] = 0; zyr[x] = 0
+                        ccx[x] = px; ccy[x] = py
+                        al[x] = true; it[x] = p.maxIter; nAlive += 1
                     }
                 }
-                if p.isCancelled() { stop.value = true }
+                var iter = 0
+                while iter < p.maxIter && nAlive > 0 {
+                    var x = 0
+                    while x + 4 <= w {
+                        var anyAlive = false
+                        for l in 0 ..< 4 {
+                            if al[x + l] { anyAlive = true; break }
+                        }
+                        if anyAlive {
+                            let zx = SIMD4(zxr[x], zxr[x + 1], zxr[x + 2], zxr[x + 3])
+                            let zy = SIMD4(zyr[x], zyr[x + 1], zyr[x + 2], zyr[x + 3])
+                            let cx = SIMD4(ccx[x], ccx[x + 1], ccx[x + 2], ccx[x + 3])
+                            let cy = SIMD4(ccy[x], ccy[x + 1], ccy[x + 2], ccy[x + 3])
+                            let zx2 = zx * zx, zy2 = zy * zy
+                            let esc = (zx2 + zy2) .> four
+                            for l in 0 ..< 4 where al[x + l] {
+                                if esc[l] {
+                                    al[x + l] = false
+                                    nAlive -= 1
+                                    it[x + l] = iter
+                                    md[x + l] = (zx2 + zy2)[l]
+                                }
+                            }
+                            let nzx = zx2 - zy2 + cx
+                            let nzy = 2.0 * zx * zy + cy
+                            for l in 0 ..< 4 {
+                                if al[x + l] {
+                                    zxr[x + l] = nzx[l]
+                                    zyr[x + l] = nzy[l]
+                                }
+                            }
+                        }
+                        x += 4
+                    }
+                    while x < w {
+                        if al[x] {
+                            let zx = zxr[x], zy = zyr[x]
+                            let zx2 = zx * zx, zy2 = zy * zy
+                            if zx2 + zy2 > 4.0 {
+                                al[x] = false
+                                nAlive -= 1
+                                it[x] = iter
+                                md[x] = zx2 + zy2
+                            } else {
+                                zyr[x] = 2.0 * zx * zy + ccy[x]
+                                zxr[x] = zx2 - zy2 + ccx[x]
+                            }
+                        }
+                        x += 1
+                    }
+                    iter += 1
+                }
+                for x in 0 ..< w where it[x] < p.maxIter {
+                    let smooth = Double(it[x]) + 1.0 - log2(0.5 * log(max(md[x], 4.0)))
+                    let (cr, cg, cb) = Palette.lookup(lut, smooth: smooth,
+                                                      invMaxIter: invMax)
+                    rA[x] += Int(cr); gA[x] += Int(cg); bA[x] += Int(cb)
+                }
             }
         }
-        if p.isCancelled() || stop.value { return nil }
-        return out
+        let n = k * k
+        for x in 0 ..< w {
+            writePixel(base: base, width: w, x: x, y: y,
+                       r: rA[x], g: gA[x], b: bA[x], n: n)
+        }
+    }
+
+    /// Vector float row: same shape in SIMD4<Float>, cardioid in double.
+    static func renderRowVF(y: Int, p: RenderParams, k: Int, lut: [UInt32],
+                            invMax: Double, originX: Double, topY: Double,
+                            pixelSize: Double, base: UnsafeMutablePointer<UInt8>) {
+        let w = p.width
+        var it = [Int](repeating: 0, count: w)
+        var md = [Float](repeating: 4.0, count: w)
+        var al = [Bool](repeating: false, count: w)
+        var zxr = [Float](repeating: 0, count: w)
+        var zyr = [Float](repeating: 0, count: w)
+        var ccx = [Float](repeating: 0, count: w)
+        var ccy = [Float](repeating: 0, count: w)
+        var rA = [Int](repeating: 0, count: w)
+        var gA = [Int](repeating: 0, count: w)
+        var bA = [Int](repeating: 0, count: w)
+        let four = SIMD4<Float>(repeating: 4.0)
+        for sy in 0 ..< k {
+            let gby = (p.offsetY + y) * k + sy
+            let py = topY + Double(gby) * pixelSize
+            for sx in 0 ..< k {
+                var nAlive = 0
+                for x in 0 ..< w {
+                    let gbx = (p.offsetX + x) * k + sx
+                    let px = originX + Double(gbx) * pixelSize
+                    if p.julia {
+                        zxr[x] = Float(px); zyr[x] = Float(py)
+                        ccx[x] = Float(p.jcx); ccy[x] = Float(p.jcy)
+                        al[x] = true; it[x] = p.maxIter; nAlive += 1
+                    } else if interior(px: px, py: py) {
+                        al[x] = false; it[x] = p.maxIter
+                    } else {
+                        zxr[x] = 0; zyr[x] = 0
+                        ccx[x] = Float(px); ccy[x] = Float(py)
+                        al[x] = true; it[x] = p.maxIter; nAlive += 1
+                    }
+                }
+                var iter = 0
+                while iter < p.maxIter && nAlive > 0 {
+                    var x = 0
+                    while x + 4 <= w {
+                        var anyAlive = false
+                        for l in 0 ..< 4 {
+                            if al[x + l] { anyAlive = true; break }
+                        }
+                        if anyAlive {
+                            let zx = SIMD4(zxr[x], zxr[x + 1], zxr[x + 2], zxr[x + 3])
+                            let zy = SIMD4(zyr[x], zyr[x + 1], zyr[x + 2], zyr[x + 3])
+                            let cx = SIMD4(ccx[x], ccx[x + 1], ccx[x + 2], ccx[x + 3])
+                            let cy = SIMD4(ccy[x], ccy[x + 1], ccy[x + 2], ccy[x + 3])
+                            let zx2 = zx * zx, zy2 = zy * zy
+                            let esc = (zx2 + zy2) .> four
+                            for l in 0 ..< 4 where al[x + l] {
+                                if esc[l] {
+                                    al[x + l] = false
+                                    nAlive -= 1
+                                    it[x + l] = iter
+                                    md[x + l] = (zx2 + zy2)[l]
+                                }
+                            }
+                            let nzx = zx2 - zy2 + cx
+                            let nzy = 2.0 * zx * zy + cy
+                            for l in 0 ..< 4 where al[x + l] {
+                                zxr[x + l] = nzx[l]
+                                zyr[x + l] = nzy[l]
+                            }
+                        }
+                        x += 4
+                    }
+                    while x < w {
+                        if al[x] {
+                            let zx = zxr[x], zy = zyr[x]
+                            let zx2 = zx * zx, zy2 = zy * zy
+                            if zx2 + zy2 > 4.0 {
+                                al[x] = false
+                                nAlive -= 1
+                                it[x] = iter
+                                md[x] = zx2 + zy2
+                            } else {
+                                zyr[x] = 2.0 * zx * zy + ccy[x]
+                                zxr[x] = zx2 - zy2 + ccx[x]
+                            }
+                        }
+                        x += 1
+                    }
+                    iter += 1
+                }
+                for x in 0 ..< w where it[x] < p.maxIter {
+                    let smooth = Float(it[x]) + 1.0 - log2(0.5 * log(max(md[x], 4.0)))
+                    let (cr, cg, cb) = Palette.lookup(lut, smooth: Double(smooth),
+                                                       invMaxIter: invMax)
+                    rA[x] += Int(cr); gA[x] += Int(cg); bA[x] += Int(cb)
+                }
+            }
+        }
+        let n = k * k
+        for x in 0 ..< w {
+            writePixel(base: base, width: w, x: x, y: y,
+                       r: rA[x], g: gA[x], b: bA[x], n: n)
+        }
+    }
+
+    static func writePixel(base: UnsafeMutablePointer<UInt8>, width: Int,
+                           x: Int, y: Int, r: Int, g: Int, b: Int, n: Int) {
+        let o = (y * width + x) * 4
+        base[o] = UInt8(r / n)
+        base[o + 1] = UInt8(g / n)
+        base[o + 2] = UInt8(b / n)
+        base[o + 3] = 255
     }
 
     /// Iterations-only frame for the CPU benchmark (§3.3, §6.1).
@@ -191,21 +421,89 @@ public enum Fractal {
             iterations: (h + chunk - 1) / chunk) { c in
             if isCancelled() || stop.value { return }
             var sum = 0
-            for y in (c * chunk) ..< min((c + 1) * chunk, h) {
-                for x in 0 ..< w {
-                    let px = originX + Double(x) * pixelSize
+            if useDouble {
+                var it = [Int](repeating: 0, count: w)
+                var al = [Bool](repeating: false, count: w)
+                var zxr = [Double](repeating: 0, count: w)
+                var zyr = [Double](repeating: 0, count: w)
+                var ccx = [Double](repeating: 0, count: w)
+                var ccy = [Double](repeating: 0, count: w)
+                for y in (c * chunk) ..< min((c + 1) * chunk, h) {
                     let py = topY + Double(y) * pixelSize
-                    if interior(px: px, py: py) {
-                        sum += maxIter
-                        continue
+                    var nAlive = 0
+                    for x in 0 ..< w {
+                        let px = originX + Double(x) * pixelSize
+                        if interior(px: px, py: py) {
+                            al[x] = false; it[x] = maxIter
+                        } else {
+                            zxr[x] = 0; zyr[x] = 0
+                            ccx[x] = px; ccy[x] = py
+                            al[x] = true; it[x] = maxIter; nAlive += 1
+                        }
                     }
-                    if useDouble {
-                        sum += escapeD(ccx: px, ccy: py, z0x: 0, z0y: 0,
-                                       maxIter: maxIter).0
-                    } else {
+                    var iter = 0
+                    while iter < maxIter && nAlive > 0 {
+                        var x = 0
+                        while x + 4 <= w {
+                            var anyAlive = false
+                            for l in 0 ..< 4 {
+                                if al[x + l] { anyAlive = true; break }
+                            }
+                            if anyAlive {
+                                let zx = SIMD4(zxr[x], zxr[x + 1], zxr[x + 2], zxr[x + 3])
+                                let zy = SIMD4(zyr[x], zyr[x + 1], zyr[x + 2], zyr[x + 3])
+                                let cx = SIMD4(ccx[x], ccx[x + 1], ccx[x + 2], ccx[x + 3])
+                                let cy = SIMD4(ccy[x], ccy[x + 1], ccy[x + 2], ccy[x + 3])
+                                let zx2 = zx * zx, zy2 = zy * zy
+                                let esc = (zx2 + zy2) .> SIMD4<Double>(repeating: 4.0)
+                                for l in 0 ..< 4 where al[x + l] {
+                                    if esc[l] {
+                                        al[x + l] = false
+                                        nAlive -= 1
+                                        it[x + l] = iter
+                                    }
+                                }
+                                let nzx = zx2 - zy2 + cx
+                                let nzy = 2.0 * zx * zy + cy
+                                for l in 0 ..< 4 where al[x + l] {
+                                    zxr[x + l] = nzx[l]
+                                    zyr[x + l] = nzy[l]
+                                }
+                            }
+                            x += 4
+                        }
+                        while x < w {
+                            if al[x] {
+                                let zx = zxr[x], zy = zyr[x]
+                                if zx * zx + zy * zy > 4.0 {
+                                    al[x] = false
+                                    nAlive -= 1
+                                    it[x] = iter
+                                } else {
+                                    zyr[x] = 2.0 * zx * zy + ccy[x]
+                                    zxr[x] = zx * zx - zy * zy + ccx[x]
+                                }
+                            }
+                            x += 1
+                        }
+                        iter += 1
+                    }
+                    sum += it.reduce(0, +)
+                    if isCancelled() { stop.value = true; return }
+                }
+            } else {
+                for y in (c * chunk) ..< min((c + 1) * chunk, h) {
+                    let py = topY + Double(y) * pixelSize
+                    for x in 0 ..< w {
+                        let px = originX + Double(x) * pixelSize
+                        if interior(px: px, py: py) {
+                            sum += maxIter
+                            continue
+                        }
                         sum += escapeF(ccx: Float(px), ccy: Float(py), z0x: 0,
                                        z0y: 0, maxIter: maxIter).0
                     }
+                    if isCancelled() { stop.value = true; return }
                 }
             }
             total.value += sum
@@ -216,7 +514,7 @@ public enum Fractal {
     }
 }
 
-/// Thread-safe box for render/bench cancellation flags.
+/// Thread-safe box for render/bench shared state.
 public final class Locked<T>: @unchecked Sendable {
     private var v: T
     private let lock = NSLock()

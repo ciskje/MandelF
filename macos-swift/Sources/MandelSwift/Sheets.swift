@@ -91,7 +91,9 @@ struct ExportSheet: View {
         progress = "Rendering \(w)×\(h) AA\(aa)x…"
         let z = model.zone()
         let pal = model.palette, dbl = useDouble, k = aa, it = model.effIter
+        let eng = model.activeMetal()
         let flag = Locked(false)
+        let fb = Locked(false)
         cancel = flag
         Task.detached(priority: .userInitiated) {
             var big = [UInt8](repeating: 0, count: w * h * 4)
@@ -107,7 +109,9 @@ struct ExportSheet: View {
                                          jcx: z.jcx, jcy: z.jcy,
                                          offsetX: tx, offsetY: ty,
                                          fullWidth: w, fullHeight: h)
-                    guard let tile = Fractal.render(p) else { break outer }
+                    let (tile, fellBack) = ViewerModel.renderOn(eng, p)
+                    if fellBack { fb.value = true }
+                    guard let tile = tile else { break outer }
                     for row in 0 ..< th {
                         let src = row * tw * 4
                         let dst = ((ty + row) * w + tx) * 4
@@ -117,6 +121,7 @@ struct ExportSheet: View {
                 }
             }
             let result = big
+            let note = fb.value ? "GPU failed, CPU fallback. " : ""
             await MainActor.run {
                 working = false
                 if flag.value {
@@ -127,10 +132,10 @@ struct ExportSheet: View {
                 panel.allowedContentTypes = [.png]
                 panel.nameFieldStringValue = "mandelbrot.png"
                 if panel.runModal() == .OK, let url = panel.url {
-                    progress = Png.write(rgba: result, width: w, height: h, to: url)
-                        ? "Saved \(url.lastPathComponent)" : "Save failed."
+                    progress = note + (Png.write(rgba: result, width: w, height: h, to: url)
+                        ? "Saved \(url.lastPathComponent)" : "Save failed.")
                 } else {
-                    progress = ""
+                    progress = note
                 }
             }
         }
@@ -197,6 +202,7 @@ struct VideoSheet: View {
         let k = aaSel == 0 ? model.aa : 1 << (aaSel - 1)
         let z = model.zone()
         let pal = model.palette, dbl = useDouble
+        let eng = model.activeMetal()
         let hasFfmpeg = Video.findFFmpeg() != nil
         var outURL: URL?
         if hasFfmpeg {
@@ -227,7 +233,8 @@ struct VideoSheet: View {
                                      centerY: f.centerY, scale: f.scale,
                                      maxIter: f.maxIter, palette: pal, aa: k,
                                      useDouble: dbl)
-                if let px = Fractal.render(p) {
+                let (fr, _) = ViewerModel.renderOn(eng, p)
+                if let px = fr {
                     let url = dir.appendingPathComponent(String(format: "f%04d.png", i))
                     ok = Png.write(rgba: px, width: w, height: h, to: url) && ok
                 } else { ok = false; break }
@@ -272,7 +279,7 @@ struct BenchmarkSheet: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("960x540 1x AA = 960x540 elementary samples without averaging, 10915 max iterations, scale 1.0453474311811176e-04, precision CPU \(model.useDouble ? "64-bit" : "32-bit") — minimum duration 8 seconds.")
+            Text("960x540 1x AA = 960x540 elementary samples without averaging, 10915 max iterations, scale 1.0453474311811176e-04, precision \(model.engineSel == .gpu ? "GPU 32-bit" : "CPU " + (model.useDouble ? "64-bit" : "32-bit")) — minimum duration 8 seconds.")
                 .font(.caption).foregroundStyle(.secondary)
             HStack {
                 if let preview {
@@ -325,6 +332,10 @@ struct BenchmarkSheet: View {
     }
 
     private func start() {
+        if let eng = model.activeMetal() { startGPU(eng) } else { startCPU() }
+    }
+
+    private func startCPU() {
         // Colored preview first (Fire, AA 1x).
         let p = RenderParams(width: 320, height: 180,
                              centerX: Benchmark.centerX, centerY: Benchmark.centerY,
@@ -338,13 +349,13 @@ struct BenchmarkSheet: View {
         let flag = Locked(false)
         cancel = flag
         let t0 = Date()
-        var lastTick = t0
+        let lastTick = Locked(t0)
         Task.detached(priority: .userInitiated) {
             guard let r = Benchmark.run(useDouble: dbl, tick: { el, frames in
                 if flag.value { return false }
                 let now = Date()
-                if now.timeIntervalSince(lastTick) >= 1.0 {
-                    lastTick = now
+                if now.timeIntervalSince(lastTick.value) >= 1.0 {
+                    lastTick.value = now
                     let rate = Double(frames * Benchmark.samples) / max(el, 0.2)
                     let pct = min(100, Int(el / Benchmark.budget * 100))
                     Task { @MainActor in
@@ -373,17 +384,66 @@ struct BenchmarkSheet: View {
         }
     }
 
+    private func startGPU(_ eng: MetalEngine) {
+        // Colored preview first (Fire, AA 1x), offscreen.
+        let p = RenderParams(width: 320, height: 180,
+                             centerX: Benchmark.centerX, centerY: Benchmark.centerY,
+                             scale: Benchmark.scale, maxIter: Benchmark.maxIter,
+                             palette: 0, aa: 1, useDouble: false)
+        if let px = eng.render(p),
+           let cg = Png.cgImage(rgba: px, width: 320, height: 180) {
+            preview = NSImage(cgImage: cg, size: NSSize(width: 320, height: 180))
+        }
+        let flag = Locked(false)
+        cancel = flag
+        let t0 = Date()
+        let lastTick = Locked(t0)
+        Task.detached(priority: .userInitiated) {
+            guard let r = eng.bench(maxIter: Benchmark.maxIter, tick: { el, frames in
+                if flag.value { return false }
+                let now = Date()
+                if now.timeIntervalSince(lastTick.value) >= 1.0 {
+                    lastTick.value = now
+                    let rate = Double(frames * Benchmark.samples) / max(el, 0.2)
+                    let pct = min(100, Int(el / Benchmark.budget * 100))
+                    Task { @MainActor in
+                        progress = "\(pct)%  |  \(Benchmark.formatRate(rate))"
+                    }
+                }
+                return true
+            }, isCancelled: { flag.value }) else {
+                await MainActor.run {
+                    running = false
+                    progress = flag.value ? "Cancelled." : "GPU benchmark failed."
+                    AppLog.shared.add("Benchmark GPU: \(progress)")
+                }
+                return
+            }
+            await MainActor.run {
+                running = false
+                let mpix = Double(r.frames * Benchmark.samples) / r.seconds / 1e6
+                runs.append((r.frames, r.seconds))
+                result = String(format: "%.1f Mpixel/s", mpix)
+                detail = String(format: "%d frames (%.1f frame/s) 960x540 AA1x in %.2f s on %@",
+                                r.frames, Double(r.frames) / r.seconds,
+                                r.seconds, eng.deviceShortName)
+                progress = "Done."
+            }
+        }
+    }
+
     private func exportCSV() {
         let panel = NSSavePanel()
         panel.allowedContentTypes = [.commaSeparatedText]
         panel.nameFieldStringValue = "benchmark.csv"
         guard panel.runModal() == .OK, let url = panel.url else { return }
-        let dbl = model.useDouble
+        let isGPU = model.engineSel == .gpu
+        let dev = isGPU ? (model.metal?.deviceShortName ?? "GPU") : Diagnostics.cpuName()
+        let prec = isGPU ? "32-bit" : (model.useDouble ? "64-bit" : "32-bit")
         for (i, run) in runs.enumerated() {
             let mpix = Double(run.frames * Benchmark.samples) / run.seconds / 1e6
-            try? Benchmark.csvAppend(to: url, engine: "CPU",
-                                     device: Diagnostics.cpuName(),
-                                     precision: dbl ? "64-bit" : "32-bit",
+            try? Benchmark.csvAppend(to: url, engine: isGPU ? "GPU" : "CPU",
+                                     device: dev, precision: prec,
                                      run: i + 1, frames: run.frames,
                                      seconds: run.seconds, mpixelS: mpix)
         }
@@ -397,11 +457,18 @@ struct LogSheet: View {
     @Environment(\.dismiss) private var dismiss
 
     var text: String {
+        let m = model.metal
         var s = "Mandelbrot Set Viewer   v\(AppVersion.full)\n"
         s += "\(Diagnostics.osString())   Swift (no .NET runtime)\n\n"
-        s += "=== Engine ===\nCPU (in use)\n\n"
-        s += "=== GPU engine ===\nNot available in this build (Metal pending).\n\n"
-        s += "=== GPU selection ===\nPrecision: \(model.useDouble ? "64-bit" : "32-bit")\n\n"
+        s += "=== Engine ===\n\(model.engineSel == .gpu ? "GPU" : "CPU") (in use)\n\n"
+        s += "=== GPU engine ===\n"
+        if let m {
+            s += "Ready, device \(m.deviceName), \(m.details)\n"
+        } else {
+            s += "Not initialized (Metal float-only; select the GPU engine to init).\n"
+        }
+        s += "\n=== GPU selection ===\ndevice=\(model.gpuChoice.isEmpty ? "Auto" : model.gpuChoice) " +
+            "precision=\(model.engineSel == .gpu ? "32" : (model.useDouble ? "64" : "32"))\n\n"
         let cur = Store.load()
         s += "=== Saved settings ===\nengine=\(cur.engine) palette=\(cur.palette) " +
             "aa=\(cur.aaIndex) iter=\(cur.maxIter)\(cur.iterAuto ? " (auto)" : "") " +

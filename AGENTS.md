@@ -43,7 +43,7 @@ Each environment versions independently (`X.Y.Z` = its own intent set):
 
 - Z = bugfix/tweak, Y = new feature/behavior, X = upheaval.
 - Docs/refactor/build never change the version.
-- Current: `windows-c` `2.24.2`, `macos-avalonia` `2.22.7`, `macos-swift` `0.2.1`.
+- Current: `windows-c` `2.24.2`, `macos-avalonia` `2.22.7`, `macos-swift` `0.3.0`.
 - Single source per environment: `<Version>` in its `.csproj`
   (`windows-c` also mirrors it into `AppVersion.cs`; the two must match).
   `macos-swift` uses `Sources/MandelCore/AppVersion.swift`.
@@ -56,8 +56,8 @@ One channel per environment, tags always carry the environment prefix:
   (Inno Setup, per-machine install). Command in `windows-c/AGENTS.md`.
 - `macos-avalonia`: tag `macos-avalonia-vX.Y.Z` + `MandelbrotViewer-X.Y.Z-arm64.dmg`.
   Command in `macos-avalonia/AGENTS.md`.
-- `macos-swift`: tag `macos-swift-vX.Y.Z` + `MandelSwift-X.Y.Z-arm64.zip`
-  (release binary; `.app` bundle / dmg later). Command in `macos-swift/AGENTS.md`.
+- `macos-swift`: tag `macos-swift-vX.Y.Z` + `MandelSwift-X.Y.Z-arm64.dmg`
+  (`.app` bundle + Applications symlink, ad-hoc signed). Command in `macos-swift/AGENTS.md`.
 - Every version bump is published (tag + release with artifact), otherwise
   Latest lags behind the code. Keep the **last 2 releases per environment**.
 - Release notes **always in English**.

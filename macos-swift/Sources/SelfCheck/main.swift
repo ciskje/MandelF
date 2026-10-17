@@ -84,4 +84,27 @@ let sca = Fractal.render(RenderParams(width: 48, height: 32, centerX: -0.75,
 Fractal.simdAvailable = true
 check(vec == sca, "double vector bit-identical to scalar")
 
+// §4: 88-byte view params, Metal adapters, GPU smoke render.
+check(MemoryLayout<GpuViewParams>.size == 88, "GpuViewParams 88 bytes")
+let adapters = MetalEngine.adapterNames()
+check(!adapters.isEmpty, "Metal adapters present")
+let eng = MetalEngine()
+check(eng.tryInitialize(deviceName: nil), "Metal init: \(eng.lastError)")
+let gp = RenderParams(width: 64, height: 48, centerX: -0.5, centerY: 0,
+                      scale: 9.36, maxIter: 300, palette: 0, aa: 1,
+                      useDouble: false)
+let cpuF = Fractal.render(gp)!
+let gpu = eng.render(gp)
+check(gpu != nil && gpu!.count == cpuF.count, "GPU render ok")
+if let gpu {
+    var diff = 0
+    for i in stride(from: 0, to: gpu.count, by: 4) {
+        if abs(Int(gpu[i]) - Int(cpuF[i])) > 1
+            || abs(Int(gpu[i + 1]) - Int(cpuF[i + 1])) > 1
+            || abs(Int(gpu[i + 2]) - Int(cpuF[i + 2])) > 1 { diff += 1 }
+    }
+    let frac = Double(diff) / Double(64 * 48)
+    check(frac < 0.02, "GPU near-identical to CPU float (\(diff) px)")
+}
+
 print("SelfCheck passed")
