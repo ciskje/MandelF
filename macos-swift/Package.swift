@@ -10,9 +10,12 @@ let package = Package(
         .executable(name: "MandelCLI", targets: ["MandelCLI"]),
     ],
     targets: [
-        .target(name: "MandelCore"),
-        .executableTarget(name: "MandelSwift", dependencies: ["MandelCore"]),
-        .executableTarget(name: "SelfCheck", dependencies: ["MandelCore"]),
-        .executableTarget(name: "MandelCLI", dependencies: ["MandelCore"]),
+        .target(name: "MandelCore", path: "source/MandelCore"),
+        .executableTarget(name: "MandelSwift", dependencies: ["MandelCore"],
+                          path: "source/MandelSwift"),
+        .executableTarget(name: "SelfCheck", dependencies: ["MandelCore"],
+                          path: "source/SelfCheck"),
+        .executableTarget(name: "MandelCLI", dependencies: ["MandelCore"],
+                          path: "source/MandelCLI"),
     ]
 )

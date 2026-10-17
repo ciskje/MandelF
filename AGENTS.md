@@ -1,5 +1,18 @@
 # AGENTS.md — MandelF (windows-c + macos-avalonia + macos-swift)
 
+## Standing decisions (how the owner wants this repo — never regress)
+
+- One repo, one folder per dev environment, named `<platform>-<stack>`
+  lowercase (`windows-c`, `macos-avalonia`, `macos-swift`).
+- Same folder scheme everywhere: docs at env root, `source/` for code
+  (`source.tests/` for C# tests), `packaging/`, `dist/`, `screenshots/`.
+  Toolchain defaults never override this (SPM paths mapped explicitly).
+- No `SPEC*.md` files: the normative spec lives in §1–§8 below.
+- No Rust env (`MandelR` abandoned, stays outside the repo).
+- One release channel per env, tags carry the env prefix; docs in English.
+- Build only for the local platform; repo lives on NAS → redirect all
+  heavy I/O (build trees, restores, test temp) to local SSD scratch.
+
 One repo, native builds of the same Mandelbrot viewer:
 
 - `windows-c/` — C# / WinForms / .NET 8, Windows only (imported from MandelC,
@@ -21,9 +34,7 @@ Every environment folder follows the same scheme:
 ```text
 <env>/
   AGENTS.md README.md CHANGELOG.md TODO.md   // docs (SPECS.md/QUESTIONS.md where present)
-  <code>/          // toolchain convention, do NOT rename:
-                  //   MandelbrotViewer/ (+ .Tests/) for the C# ports,
-                  //   Sources/ for Swift (SwiftPM layout)
+  source/          // code (source.tests/ for C# tests)
   packaging/      // Info.plist/.iss + make script (reproducible artifacts)
   dist/           // final artifacts only (.app+dmg / setup.exe), regenerable,
                   //   gitignored — keep the last 2 per environment locally

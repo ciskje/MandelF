@@ -6,7 +6,7 @@ and mandatory workflow for this project.
 ## Project
 
 Interactive Mandelbrot set viewer in C# / WinForms (.NET 8).
-Project root: `windows-c/` (repo MandelF). Code: `windows-c/MandelbrotViewer/`.
+Project root: `windows-c/` (repo MandelF). Code: `windows-c/source/`.
 
 ## Language (mandatory)
 
@@ -25,11 +25,11 @@ must be written in **English**.
 
 ```powershell
 # Build
-dotnet build "MandelbrotViewer\MandelbrotViewer.csproj"
+dotnet build "source\MandelbrotViewer.csproj"
 # Debug run
-dotnet run --project "MandelbrotViewer"
+dotnet run --project "source"
 # Publish self-contained (regenerates published\, ~150 MB, no installed runtime required)
-dotnet publish "MandelbrotViewer\MandelbrotViewer.csproj" -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o "published"
+dotnet publish "source\MandelbrotViewer.csproj" -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o "published"
 ```
 
 - End-user launch: run the published file in `published\` if present;
@@ -37,7 +37,7 @@ dotnet publish "MandelbrotViewer\MandelbrotViewer.csproj" -c Release -r win-x64 
 
 ## Versioning (mandatory)
 
-- The version lives in the source: `MandelbrotViewer/AppVersion.cs` (constants
+- The version lives in the source: `source/AppVersion.cs` (constants
   `Major`, `Minor`, `Patch`) + `<Version>` in the `.csproj`. The two must match.
 - Format `X.Y.Z`. The UI shows `AppVersion.Display`: if `Z` is 0 use the
   short notation `X.Y`.

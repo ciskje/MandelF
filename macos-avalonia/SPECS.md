@@ -4,11 +4,11 @@ Mappa file SPEC §1.3 → questa replica (Avalonia):
 
 | SPEC | Replica |
 |---|---|
-| Program.cs | `MandelbrotViewer/Program.cs` (CLI + Avvio Avalonia) |
+| Program.cs | `source/Program.cs` (CLI + Avvio Avalonia) |
 | AppVersion.cs | idem |
 | RenderEngine.cs | idem |
 | AppLog.cs | idem (ring 200) |
-| Settings.cs | idem (`~/Library/Application Support/MandelbrotViewer/`) |
+| Settings.cs | idem (`~/Library/Application Support/source/`) |
 | Palette.cs | idem (7×5 stop, LUT 4096) |
 | Mandelbrot.cs | idem (math + 4 path scalar/vector×float/double + bench) + `RenderInto` headless bit-identico |
 | GpuEngine.cs | stub contratto §4.1 (Metal pendente) |

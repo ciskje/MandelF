@@ -66,10 +66,10 @@ it installs to Program Files with Start-menu shortcuts and an uninstaller.
 
 ```powershell
 # Build
-dotnet build MandelbrotViewer\MandelbrotViewer.csproj
+dotnet build source\MandelbrotViewer.csproj
 
 # Run (debug)
-dotnet run --project MandelbrotViewer
+dotnet run --project source
 
 # Publish + installer (self-contained single file, then ISCC)
 .\setup.bat   # -> MandelbrotViewer-Setup-<version>.exe

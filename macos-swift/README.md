@@ -36,16 +36,16 @@ packaging/make-app-dmg.sh <version>   # .app bundle + ad-hoc sign + DMG in dist/
 
 ## Layout
 
-- `Sources/MandelCore/` — engine (render, palettes, settings, zones,
+- `source/MandelCore/` — engine (render, palettes, settings, zones,
   benchmark, Metal GPU, PNG, video, diagnostics, log).
-- `Sources/MandelSwift/` — SwiftUI app (view model, AppKit mouse view,
+- `source/MandelSwift/` — SwiftUI app (view model, AppKit mouse view,
   toolbar/menus/status, sheets).
-- `Sources/MandelCLI/` — headless CLI (`--bench-cpu`, `--diag-gpu`,
+- `source/MandelCLI/` — headless CLI (`--bench-cpu`, `--diag-gpu`,
   `--bench-gpu`, `--shot`).
-- `Sources/SelfCheck/` — runnable SPEC assertions.
+- `source/SelfCheck/` — runnable SPEC assertions.
 - `packaging/` — `Info.plist` + `make-app-dmg.sh`.
 - `screenshots/` — README images (regenerable via `--shot`).
 - `dist/` — `MandelSwift-X.Y.Z-arm64.dmg` (drag into Applications).
   Ad-hoc signed; Apple Developer ID needed for notarized distribution.
-- Settings/zones: `~/Library/Application Support/MandelbrotViewer/`
+- Settings/zones: `~/Library/Application Support/source/`
   (`zone/` subfolder for favorites).

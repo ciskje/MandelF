@@ -15,7 +15,7 @@ rm -rf "$APP" "$STAGE" dist/*.dmg
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp "$BIN" "$APP/Contents/MacOS/"
 sed "s/__VERSION__/$VER/g" packaging/Info.plist > "$APP/Contents/Info.plist"
-cp ../macos-avalonia/MandelbrotViewer/Assets/app.icns "$APP/Contents/Resources/AppIcon.icns"
+cp ../macos-avalonia/source/Assets/app.icns "$APP/Contents/Resources/AppIcon.icns"
 codesign --force --deep --sign - "$APP"
 codesign --verify "$APP"
 mkdir -p "$STAGE"

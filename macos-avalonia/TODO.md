@@ -6,10 +6,10 @@
       TuneBlocks via split-tiles + margine 1.5%, fence 60s, VRAM pre-check,
       preview/export/benchmark/video su GPU attiva, fallback CPU §4.9.
 - [ ] Verifica visuale manuale completa (tooltip, chart benchmark, video MP4).
-- [ ] Icona: app.ico/app.png ok; app.icns solo risorsa (bundle .app futuro).
+- [x] Icona: app.ico/app.png/app.icns sono il frattale (verificato: nessuna
+  placeholder); app.icns in uso nel bundle .app via packaging/make-app-dmg.sh.
 - [ ] Chiarire con autore SPEC le 3 discrepanze in QUESTIONS.md.
 - [ ] Verifica visuale manuale UI (layout 1152x720, tooltip, menu, chart).
 - [ ] `ffmpeg` via brew per test video MP4 (fallback PNG già ok).
-- [ ] Icona app.ico dedicata (ora placeholder Avalonia).
 - [ ] Chiarire con autore SPEC le 3 discrepanze in QUESTIONS.md.
 

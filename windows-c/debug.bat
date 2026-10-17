@@ -14,7 +14,7 @@ if %errorlevel% equ 0 (
     exit /b 1
 )
 
-"%DOTNET%" run --project "MandelbrotViewer\MandelbrotViewer.csproj" -- %*
+"%DOTNET%" run --project "source\MandelbrotViewer.csproj" -- %*
 set "EXITCODE=%ERRORLEVEL%"
 popd
 exit /b %EXITCODE%

@@ -15,10 +15,10 @@ GPU **Metal** (fase pendente, fallback CPU per §4.9).
 
 ## Layout
 
-- `MandelbrotViewer/` — app (mappa file in SPECS.md)
+- `source/` — app (mappa file in SPECS.md)
 - `MandelbrotViewer.Tests/` — test xUnit fedeltà
 - `published/` — binario self-contained osx-arm64
-- Dati utente: `~/Library/Application Support/MandelbrotViewer/` (settings.json, zone/)
+- Dati utente: `~/Library/Application Support/source/` (settings.json, zone/)
 - `dist/` — `MandelbrotViewer.app` (bundle firmato ad-hoc, icona) e
   `MandelbrotViewer-2.22.7-arm64.dmg` (con symlink Applicazioni).
   Nota: firma ad-hoc, non notarizzato — al primo avvio da DMG usare
