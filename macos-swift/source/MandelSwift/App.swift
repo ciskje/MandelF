@@ -230,7 +230,10 @@ struct ContentView: View {
             }
             .pickerStyle(.segmented)
             .frame(width: 90)
-            .help("CPU/GPU precision 32-bit (float): faster, less precise. / 64-bit (double): more precise, slower. (GPU is float-only)")
+            .disabled(model.engineSel == .gpu) // GPU backend is 32-bit only on this platform
+            .help(model.engineSel == .gpu
+                ? "64-bit (double): unavailable with the GPU engine on this platform."
+                : "CPU/GPU precision 32-bit (float): faster, less precise. / 64-bit (double): more precise, slower. (GPU is float-only)")
             .onChange(of: model.useDouble) {
                 if model.engineSel == .gpu { model.useDouble = false }
                 model.requestRender(w: Int(model.viewW), h: Int(model.viewH),

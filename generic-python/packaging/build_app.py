@@ -125,15 +125,19 @@ elif IS_DARWIN:
     os.symlink("/Applications", os.path.join(DMGDIR, "Applications"))
     out_dir = os.path.join(HERE, "..", "..", "macos-python", "dist")
     os.makedirs(out_dir, exist_ok=True)
-    dmg_base = os.path.join(out_dir, "MandelF-python-%s-arm64" % VERSION)
-    if os.path.exists(dmg_base + ".dmg"):
-        os.remove(dmg_base + ".dmg")
+    dmg_name = "MandelF-python-%s-arm64.dmg" % VERSION
+    # DMG nasce sul disco di sistema, sul NAS va solo la copia finale
+    dmg_tmp = os.path.join(tempfile.gettempdir(), dmg_name)
+    if os.path.exists(dmg_tmp):
+        os.remove(dmg_tmp)
     run(["hdiutil", "create", "-volname", "MandelF-python", "-srcfolder", DMGDIR,
-         "-ov", "-format", "UDZO", dmg_base + ".dmg"])
+         "-ov", "-format", "UDZO", dmg_tmp])
+    shutil.copyfile(dmg_tmp, os.path.join(out_dir, dmg_name))
+    os.remove(dmg_tmp)
     if os.path.isdir(DMGDIR):
         shutil.rmtree(DMGDIR)
     print("OK: app =", app, "(disco di sistema)")
-    print("OK: dmg =", dmg_base + ".dmg", "(progetto/NAS)")
+    print("OK: dmg =", os.path.join(out_dir, dmg_name), "(progetto/NAS)")
 else:
     fail("piattaforma non supportata per la build: %s" % sys.platform)
 

@@ -7,11 +7,12 @@ cd "$(dirname "$0")/.."
 VER="${1:?usage: make-app-dmg.sh <version>}"
 SCRATCH="${TMPDIR}mandel-swift-build"
 BIN="$SCRATCH/arm64-apple-macosx/release/MandelF"
-APP="dist/MandelF-swift.app"
-STAGE="dist/stage"
+STAGE="${TMPDIR}mandel-swift-stage"
+APP="$STAGE/MandelF-swift.app"
+DMG="MandelF-swift-$VER-arm64.dmg"
 
 swift build -c release --scratch-path "$SCRATCH"
-rm -rf "$APP" "$STAGE" dist/*.dmg
+rm -rf "$STAGE" "dist/$DMG"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp "$BIN" "$APP/Contents/MacOS/"
 sed "s/__VERSION__/$VER/g" packaging/Info.plist > "$APP/Contents/Info.plist"
@@ -19,9 +20,10 @@ cp ../macos-avalonia/source/Assets/app.icns "$APP/Contents/Resources/AppIcon.icn
 codesign --force --deep --sign - "$APP"
 codesign --verify "$APP"
 mkdir -p "$STAGE"
-cp -R "$APP" "$STAGE/"
 ln -s /Applications "$STAGE/Applications"
 hdiutil create -volname "MandelF-swift $VER" -srcfolder "$STAGE" -ov -format UDZO \
-  "dist/MandelF-swift-$VER-arm64.dmg"
-rm -rf "$STAGE"
+  "${TMPDIR}$DMG"
+cp -R "$APP" dist/
+cp "${TMPDIR}$DMG" dist/
+rm -rf "$STAGE" "${TMPDIR}$DMG"
 ls -la dist/
