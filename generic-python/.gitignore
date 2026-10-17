@@ -1,0 +1,36 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Log di esecuzione
+*.log
+
+# Zone salvate dal tool ("Salva zona", nome di default con timestamp)
+mandelbrot_*.json
+
+# Config dell'app (stato utente; salvata all'uscita / throttled sui cambiamenti)
+config.json
+
+# File di prova non pertinenti al progetto
+hello.py
+hello_world.py
+
+# Ambiente virtuale
+.venv/
+venv/
+
+# Build / packaging (eseguibile self-contained, one-dir)
+dist/
+build/
+# Artifacts generati da build_app.py / make_icon.py
+mandelbrot.icns
+mandelbrot.ico
+icon_src.png
+
+# OS
+Thumbs.db
+.DS_Store
+._*
+.opencode/
+.opencode/
