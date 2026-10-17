@@ -20,6 +20,9 @@ in that environment.
 - [ ] `macos-avalonia`: fresh screenshots (main window + benchmark; no
   `screenshots/` in the repo) + manual visual checks (tooltip, chart,
   video MP4 — `ffmpeg` present at `~/.local/bin/ffmpeg`). Requires a GUI session.
+- [ ] `generic` (later): mirror host-MAC device label (`hostMacTag()`) into
+  windows-c + avalonia + python benchmarks (implemented in macos-swift
+  7.3.2: device label = name + " aa:bb:cc:dd:ee:ff" in GUI/CSV/CLI).
 - [x] publish `macos-python-v7.3.2` (tag + `dist/` + GitHub release;
   README Download/title aligned to 7.3.2).
 - [x] publish `windows-python-v7.3.2` (tag + `dist/` + GitHub release;
