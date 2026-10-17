@@ -43,6 +43,8 @@ release notes in English. Details in `AGENTS.md`.
 
 ![Benchmark dialog](windows-c/screenshots/dialog-benchmark.png)
 
+![macos-python (ex-MandelPy, Metal f32)](macos-python/screenshots/main-window.png)
+
 ## Build
 
 ```powershell
