@@ -137,7 +137,31 @@ elif IS_WIN32:
         exe_version = None
 
     excludes = ["objc", "Foundation", "Metal", "pyobjc", "torch",
-                "matplotlib", "IPython", "pytest"]
+                "matplotlib", "IPython", "pytest", "scipy"]
+
+    # --- Slim (~1.3 GB risparmiati): niente runtime CUDA / torch / scipy nel
+    #     pacchetto. Disegno documentato: il runtime CUDA resta installazione
+    #     dell'utente (toolkit o pip nvidia/*, trovato da cupy via
+    #     cuda-pathfinder); torch/scipy non sono importati da nessun modulo
+    #     nostro (scipy entra via cupy.linalg/testing, torch solo come DLL
+    #     risolte dall'analisi binaria). Si filtrano i binari per directory
+    #     di provenienza (wheel nvidia/torch, scipy.libs) + nomi delle DLL
+    #     runtime note (toolkit bin\\x64 e affini). Restano: .pyd di cupy/wgpu/
+    #     numba/llvmlite/numpy, DLL Python/Tk e wgpu-native. ---
+    _RT_NAMES = ("cublas", "cublaslt", "cufft", "cufftw", "cusparse",
+                 "cusolver", "curand", "cudart", "nvrtc", "nvjitlink",
+                 "nvblas", "cupti", "cudnn", "c10", "torch_cpu",
+                 "torch_cuda", "nvshmem")
+    def _is_bloat(src):
+        s = src.replace("/", "\\").lower()
+        if "site-packages\\nvidia\\" in s or "site-packages\\torch\\" in s:
+            return True
+        if "scipy.libs" in s:
+            return True
+        base = s.rsplit("\\", 1)[-1]
+        return (base.endswith(".dll")
+                and any(base[:-4].startswith(n) for n in _RT_NAMES))
+    binaries = [(s, d) for (s, d) in binaries if not _is_bloat(s)]
 
 else:
     # Altre piattaforme: solo CPU (numba/numpy) + PIL/tkinter, GPU esclusa.
@@ -160,6 +184,12 @@ a = Analysis(
     cipher=block_cipher,
     noarchive=False,
 )
+
+if IS_WIN32:
+    # --- Slim post-Analysis: l'analisi delle dipendenze binarie riaggiunge le
+    #     DLL runtime CUDA anche se escluse in ingresso; si filtrano qui dal
+    #     TOC (formato: dest, src, kind) prima di EXE/COLLECT. ---
+    a.binaries = [(d, s, k) for (d, s, k) in a.binaries if not _is_bloat(s)]
 
 pyz = PYZ(a.pure, a.zipped_data, cipher=block_cipher)
 

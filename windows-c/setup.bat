@@ -3,7 +3,7 @@ setlocal
 
 pushd "%~dp0"
 if "%~1"=="" (
-    set "ISS=MandelbrotViewer-Setup.iss"
+    set "ISS=packaging\MandelbrotViewer-Setup.iss"
 ) else (
     set "ISS=%~1"
 )
@@ -41,7 +41,8 @@ if %errorlevel% neq 0 (
 )
 
 echo === Step 2: compiling "%ISS%" ===
-"%ISCC%" /O"%~dp0." "%ISS%"
+if not exist "%~dp0dist" mkdir "%~dp0dist"
+"%ISCC%" /O"%~dp0dist" "%ISS%"
 set "EXITCODE=%ERRORLEVEL%"
 popd
 if %EXITCODE% neq 0 pause

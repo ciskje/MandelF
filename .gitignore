@@ -6,8 +6,9 @@ published/
 dist/
 .build/
 *.dmg
-# Inno Setup installer (regenerable with ISCC, attached to GitHub Release)
-windows-c/MandelbrotViewer-Setup-*.exe
+# Inno Setup installer (regenerable with ISCC via windows-c\setup.bat,
+# output to windows-c\dist\, attached to GitHub Release; dist/ above covers it)
+MandelF-Setup-*.exe
 # VS / Rider
 .vs/
 .idea/

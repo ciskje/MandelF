@@ -1,5 +1,17 @@
 # QUESTIONS — MandelC
 
+- **Why do CUDA and DirectX both fail when the saved GPU is the AMD iGPU?**
+  — answered. No code change: with a named card both engines do exact-match.
+  CUDA only enumerates NVIDIA devices, so `TryInitialize("AMD Radeon...")`
+  correctly reports `CUDA device not found`; DirectX creates the device on
+  the iGPU but `CreateSwapChainForHwnd` is denied (`E_ACCESSDENIED`) because
+  the window lives on the NVIDIA-driven display (headless/cross-adapter
+  swapchain). With `Auto`, CUDA picks the only CUDA device (the NVIDIA card)
+  and DirectX uses the default hardware adapter, so both work — verified
+  headless (`--diag-gpu`: Ready True on RTX 4070 SUPER). Fix from the UI:
+  set the GPU dropdown to `Auto` (or the NVIDIA card) and re-select the
+  CUDA/DirectX radio; the working choice is saved on close.
+
 - **Can the program be optimized further?** — answered. The core escape loops
   (CPU AVX512/AVX2, CUDA 2D PTX with FMA and autotuned blocks, DirectX HLSL
   fullscreen triangle with offscreen event-query ring, 4096-entry LUT, on-chip

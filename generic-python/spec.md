@@ -449,8 +449,8 @@ CUDA (solo per CUDA; Vulkan bundled).
 
 | piattaforma | app (disco di sistema, temp) | distributivo (progetto `dist/`) | GPU |
 |---|---|---|---|
-| Windows | `mandelbrot_dist/Mandelbrot/Mandelbrot.exe` + `_internal/` | `dist/Mandelbrot-v<ver>-win64.zip` | Vulkan bundled; CUDA solo con driver+runtime utente (cuda-pathfinder: `CUDA_PATH`/PATH/Program Files) |
-| macOS | `mandelbrot_dist/Mandelbrot.app` (firma ad-hoc) | `dist/Mandelbrot-v<ver>-macos.dmg` (staging `mandelbrot_dmg` + link `/Applications`, `hdiutil UDZO`) | Metal + Vulkan bundled |
+| Windows | `mandelbrot_dist/MandelF/MandelF.exe` + `_internal/` | `windows-python/dist/MandelF-python-<ver>-win64.zip` | Vulkan bundled; CUDA solo con driver+runtime utente (cuda-pathfinder: `CUDA_PATH`/PATH/Program Files) |
+| macOS | `mandelbrot_dist/MandelF.app` (firma ad-hoc) | `macos-python/dist/MandelF-python-<ver>-arm64.dmg` (staging `mandelbrot_dmg` + link `/Applications`, `hdiutil UDZO`) | Metal + Vulkan bundled |
 - Primo avvio su macOS: firma ad-hoc non notarizzata → Gatekeeper blocca;
   tasto destro (Ctrl-clic) su `Mandelbrot.app` → Apri → Apri, oppure
   `xattr -cr /Applications/Mandelbrot.app` (nota anche nel README).
@@ -461,11 +461,13 @@ CUDA (solo per CUDA; Vulkan bundled).
   (lento su share di rete).
 - Ricetta `mandelbrot.spec`: entry `mandel.py` (shim) + pacchetto `mandelbrot/`
   seguito automaticamente da PyInstaller; comune `collect_all(numba/llvmlite)`,
-  `PIL._tkinter_finder`, escluse `torch/matplotlib/IPython/pytest`;
+  `PIL._tkinter_finder`, escluse `torch/matplotlib/IPython/pytest/scipy`;
   win32 `collect_all(cupy)` (solo moduli, no DLL CUDA) +
   `collect_all(wgpu/cffi)` + `hiddenimports wgpu.backends.wgpu_native`, icona
   `.ico`, versioninfo, hook `hook_dlldir.py` (`os.add_dll_directory` su EXE +
-  `_internal`); darwin `collect_all(objc/Foundation/Metal)` +
+  `_internal`); filtro `binaries` anti-bloat win32 (via directory `nvidia/`/
+  `torch/`/`scipy.libs` + nomi DLL runtime note: il runtime CUDA resta
+  installazione utente, trovato via cuda-pathfinder); darwin `collect_all(objc/Foundation/Metal)` +
   `collect_all(wgpu/cffi)`, `libomp.dylib` da `torch/lib`, `BUNDLE` (icona
   `.icns`, bundle_id, plist).
 - Ritenzione: `KEEP_N = 3` versioni per piattaforma in `dist/` (zip e dmg

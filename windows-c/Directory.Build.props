@@ -1,0 +1,8 @@
+<!-- Redirect all build intermediates (bin/obj) to the SSD temp dir:
+     the repo lives on NAS (mechanical disks). Publish output
+     (-o published/) is unaffected. -->
+<Project>
+  <PropertyGroup Condition="'$(TEMP)' != ''">
+    <ArtifactsPath>$(TEMP)\mandel-windows-c-build</ArtifactsPath>
+  </PropertyGroup>
+</Project>

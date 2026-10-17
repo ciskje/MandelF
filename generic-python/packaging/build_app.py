@@ -52,7 +52,7 @@ def keep_last_n_dist(n, d):
     for fn in os.listdir(d):
         # v6.0: accetta anche versioni a 2 parti (es. v6.0 oltre a X.Y.Z);
         # il patch mancante vale 0 ai fini dell'ordinamento.
-        m = re.match(r"mandelf-python-v(\d+)\.(\d+)(?:\.(\d+))?-(win64|arm64)\.", fn, re.IGNORECASE)
+        m = re.match(r"mandelf-python-v?(\d+)\.(\d+)(?:\.(\d+))?-(win64|arm64)\.", fn, re.IGNORECASE)
         if m:
             ver = (int(m.group(1)), int(m.group(2)), int(m.group(3) or 0))
             plat = m.group(4).lower()
@@ -103,11 +103,11 @@ if IS_WIN32:
     # Zip sul progetto/NAS: l'app resta sul disco di sistema, sul NAS va solo lo zip
     out_dir = os.path.join(HERE, "..", "..", "windows-python", "dist")
     os.makedirs(out_dir, exist_ok=True)
-    base = os.path.join(out_dir, "MandelF-python-v%s-win64" % VERSION)
+    base = os.path.join(out_dir, "MandelF-python-%s-win64" % VERSION)
     if os.path.exists(base + ".zip"):
         os.remove(base + ".zip")
     zip_path = shutil.make_archive(base, "zip",
-                                   root_dir=DISTDIR, base_dir="Mandelbrot")
+                                   root_dir=DISTDIR, base_dir="MandelF")
     print("OK: app =", app_dir, "(disco di sistema)")
     print("OK: exe =", exe)
     print("OK: zip =", zip_path, "(progetto/NAS)")
@@ -125,7 +125,7 @@ elif IS_DARWIN:
     os.symlink("/Applications", os.path.join(DMGDIR, "Applications"))
     out_dir = os.path.join(HERE, "..", "..", "macos-python", "dist")
     os.makedirs(out_dir, exist_ok=True)
-    dmg_base = os.path.join(out_dir, "MandelF-python-v%s-arm64" % VERSION)
+    dmg_base = os.path.join(out_dir, "MandelF-python-%s-arm64" % VERSION)
     if os.path.exists(dmg_base + ".dmg"):
         os.remove(dmg_base + ".dmg")
     run(["hdiutil", "create", "-volname", "MandelF-python", "-srcfolder", DMGDIR,

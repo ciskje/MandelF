@@ -1,4 +1,5 @@
 ﻿# TODO — MandelC
+- [x] CUDA/DirectX fail with saved AMD iGPU (exact-match CUDA miss + denied iGPU swapchain; Auto works, verified headless) — completed (no code change, see QUESTIONS.md)
 - [x] Write optimization implementation plan (no code change) — completed (3-phase plan WP1 I/O & buffer reuse, WP2 CPU SIMD mask cleanup, WP3 optional Brent periodicity check with A/B gates presented in chat; no version bump)
 - [x] Build installer via setup.bat and attach to v2.24.2 release — completed (ISCC direct call — this shell cannot capture cmd.exe output so setup.bat was bypassed, same result: MandelbrotViewer-Setup-2.24.2.exe ~47 MB renamed to 3-part README convention, attached to the release alongside the exe; installer stays git-ignored)
 - [x] Publish v2.24.2 (fresh self-contained exe, smoke test, README download update, commit + push + GitHub Release asset) — completed (published/MandelbrotViewer.exe 155 MB v2.24.2, --diag-gpu exit 0 CUDA OK; README → v2.24.2; installer not attached — no .iss build this round)

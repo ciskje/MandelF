@@ -17,21 +17,30 @@ in that environment.
 
 ## Pending
 
-- [ ] `windows-python`: fix CUDA backend detection (CuPy finds no GPU while
-  MandelC works on the same machine; ex-MandelPy issue #4 with screenshot).
-
 - [ ] `macos-avalonia`: verify v7.3.0 intent parity (AVX512 N/A on ARM;
   bench bars already remeasured upstream; document gaps if any).
-- [ ] `windows-c`: adopt the repo layout scheme (`packaging/` + `dist/`
-  for the setup exe, scripts updated; on the Windows machine).
-- [ ] `windows-c`: publish `windows-c-v7.3.0` GitHub release with setup exe
-  (tag pushed; build + attach from the Windows machine).
-- [ ] `windows-python`: publish `windows-python-v7.3.0` (win64 zip via
-  `generic-python/packaging/build_app.py` on Windows; tag already pushed).
 - [ ] `macos-python`: publish `macos-python-v7.3.0` (dmg via
   `generic-python/packaging/build_app.py` on this Mac; tag already pushed).
 
 ## Done
+
+- [x] `windows-c`: publish `windows-c-v7.3.0` GitHub release with setup exe
+  (`dist/MandelF-Setup-7.3.0-win-x64.exe`, 47 MB, built + install-compiled
+  on Windows; tag moved to release commit).
+- [x] `windows-python`: publish `windows-python-v7.3.0` (win64 zip
+  `MandelF-python-7.3.0-win64.zip`, 139 MB: fixed `base_dir` pre-rename bug
+  + win32 anti-bloat slim in `.spec`; smoke-tested 15 s; tag moved to
+  release commit).
+
+## Done
+
+- [x] `windows-c`: adopt the repo layout scheme (`packaging/` + `dist/`
+  for the setup exe, scripts updated; built on Windows:
+  `dist/MandelF-Setup-7.3.0-win-x64.exe`, 3-part name via .iss strip).
+- [x] `windows-python`: CUDA backend detection verified on Windows (CuPy
+  14.2 `is_available=True`, 1 device RTX 4070 SUPER, f32+f64 kernels
+  compile, 320x200 render OK; ex-MandelPy issue #4 not reproduced —
+  no code change).
 
 - [x] `macos-python`: publish `macos-python-v7.3.0` (DMG built on this Mac,
   release with asset on GitHub).

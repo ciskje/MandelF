@@ -30,6 +30,8 @@ dotnet build "source\MandelbrotViewer.csproj"
 dotnet run --project "source"
 # Publish self-contained (regenerates published\, ~150 MB, no installed runtime required)
 dotnet publish "source\MandelbrotViewer.csproj" -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o "published"
+# Installer (publishes first, then ISCC compiles packaging\*.iss -> dist\)
+.\setup.bat   # -> dist\MandelF-Setup-<version>-win-x64.exe
 ```
 
 - End-user launch: run the published file in `published\` if present;
