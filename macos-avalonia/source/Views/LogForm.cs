@@ -38,14 +38,7 @@ public sealed class LogForm : Window
             Children = { bar, box }
         };
         DockPanel.SetDock(bar, Dock.Bottom);
-        box.KeyDown += (_, e) =>
-        {
-            if (e.KeyModifiers.HasFlag(KeyModifiers.Meta) || e.KeyModifiers.HasFlag(KeyModifiers.Control))
-            {
-                if (e.Key == Key.C) { copy.IsEnabled = false; copy.IsEnabled = true; }
-            }
-            if (e.Key == Key.Escape) Close();
-        };
+        box.KeyDown += (_, e) => { if (e.Key == Key.Escape) Close(); };
     }
 }
 

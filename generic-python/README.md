@@ -1,4 +1,4 @@
-# MAB - Mandelbrot Ai benchmark per LLM agentica — v7.3.0
+# MAB - Mandelbrot Ai benchmark per LLM agentica — v7.3.1
 
 Questo repo è un **benchmark per testare le capacità agentiche e di
 programmazione di una LLM** su un progetto software reale e vivo: un
@@ -14,8 +14,8 @@ bit-identico prima di ogni commit (vedi sotto).
 
 | Piattaforma | File |
 |---|---|
-| Windows 64-bit (v7.3.0) | [MandelF-python-7.3.0-win64.zip](https://github.com/ciskje/MandelF/releases/download/windows-python-v7.3.0/MandelF-python-7.3.0-win64.zip) |
-| macOS (v7.3.0) | [MandelF-python-7.3.0-arm64.dmg](https://github.com/ciskje/MandelF/releases/download/macos-python-v7.3.0/MandelF-python-7.3.0-arm64.dmg) |
+| Windows 64-bit (v7.3.1) | [MandelF-python-7.3.1-win64.zip](https://github.com/ciskje/MandelF/releases/download/windows-python-v7.3.1/MandelF-python-7.3.1-win64.zip) |
+| macOS (v7.3.1) | [MandelF-python-7.3.1-arm64.dmg](https://github.com/ciskje/MandelF/releases/download/macos-python-v7.3.1/MandelF-python-7.3.1-arm64.dmg) |
 
 Vulkan incluso ovunque; CUDA richiede driver NVIDIA + runtime utente
 (scaricabile da [NVIDIA CUDA Downloads](https://developer.nvidia.com/cuda-downloads)).

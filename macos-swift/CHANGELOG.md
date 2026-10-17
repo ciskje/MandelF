@@ -1,5 +1,12 @@
 # CHANGELOG — macos-swift
 
+## v7.3.1
+
+- Ponytail-audit refactor, no behavior change: padded SIMD4 rows (tail
+  merged into the vector loop), merged CPU/GPU benchmark sheets, shared
+  `Video.frames` interpolation, removed dead state.
+  (Mac build verification pending on this machine.)
+
 ## v2.24.2
 
 - Version alignment (lockstep): same SPEC intent set as windows-c 2.24.2.

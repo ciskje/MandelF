@@ -9,24 +9,21 @@ import math
 import os
 import json
 import time
-import ctypes
-import struct
 import numpy as np
 from PIL import Image, ImageTk
 from . import state as S
 from . import VERSION, HISTORY
-from .config import (INIT_W, INIT_H, CX0, CY0, HALF0, MI0, MI_AUTO_BASE,
-    MI_AUTO_MIN, MI_AUTO_MAX, MIN_HALF, MIN_DIM, PHOTO_HEADROOM,
-    PHOTO_HOST_RESERVE, PHOTO_BACKSTOP_MPX, CONFIG_PATH, BENCH, BENCH_REF,
-    BENCH_GPU_SCALE, METAL_TIMEOUT_S, BENCH_RENDER_LIMIT_S, BACKEND_FG, ERR_FG,
+from .config import (INIT_W, INIT_H, CX0, CY0, HALF0, MI0,
+    MIN_HALF, MIN_DIM, CONFIG_PATH, BENCH, BENCH_REF,
+    BENCH_GPU_SCALE, METAL_TIMEOUT_S, BENCH_RENDER_LIMIT_S, ERR_FG,
     auto_mi)
 from .palette import PALETTES
 from .state import apply_palette
 from .mem import _photo_mem_ok
-from .engine import (backend, hw_name, compute, compute_gpu, _backend_ok,
+from .engine import (backend, hw_name, compute, _backend_ok,
     _default_backend, _backend_fg, _gpu_supports_f64, set_prec,
-    _warmup_cuda_device, _warmup_vulkan_adapter)
-from .cuda import (set_cuda_device, set_cuda_split, _cuda_split_devs,
+    _warmup_active_gpu)
+from .cuda import (set_cuda_device, set_cuda_split,
     _cuda_split_ready, _cuda_calibrate_split, _cuda_split_diag,
     _cuda_short_name, _cuda_label)
 from .vulkan import set_vulkan_adapter, _vulkan_short_name, _vulkan_label
@@ -195,16 +192,30 @@ class MandelbrotApp:
         state = "normal" if self.view_file else "disabled"
         self.mfile.entryconfig(self.save_zone_entry, state=state)
 
-    def show_help(self):
-        # Guida rapida (menu Help -> Istruzioni...).
+    def _dialog(self, title, heading, fg=None, padx=26, pady=20):
         win = tk.Toplevel(self.root)
-        win.title("Istruzioni")
+        win.title(title)
         win.resizable(False, False)
-        body = tk.Frame(win, padx=26, pady=20)
+        body = tk.Frame(win, padx=padx, pady=pady)
         body.pack(fill="both", expand=True)
-        tk.Label(body, text="Insieme di Mandelbrot \u2014 istruzioni",
-                 font=("Segoe UI", 14, "bold"),
-                 foreground=_backend_fg()).pack(anchor="w")
+        lbl = tk.Label(body, text=heading, font=("Segoe UI", 14, "bold"))
+        if fg:
+            lbl.config(foreground=fg)
+        lbl.pack(anchor="w")
+        return win, body
+
+    def _run_close_dialog(self, win):
+        def chiudi(_e=None):
+            win._annullato = False
+            win.destroy()
+        tk.Button(win, text="Chiudi", command=chiudi).pack(pady=(18, 20))
+        win.bind("<Return>", chiudi)
+        self._modal(win)
+
+    def show_help(self):
+        win, body = self._dialog("Istruzioni",
+                                 "Insieme di Mandelbrot \u2014 istruzioni",
+                                 fg=_backend_fg())
         text = (
             "Navigazione: rotella per zoomare al cursore (x1.25 / x0.8), "
             "click per zoom x2 al cursore, click destro (due dita sul trackpad) "
@@ -239,23 +250,10 @@ class MandelbrotApp:
             "controllarlo)."
         )
         tk.Label(body, text=text, wraplength=460, justify="left").pack(anchor="w", pady=(8, 0))
-        def chiudi(_e=None):
-            win._annullato = False
-            win.destroy()
-        tk.Button(win, text="Chiudi", command=chiudi).pack(pady=(18, 20))
-        win.bind("<Return>", chiudi)
-        self._modal(win)
+        self._run_close_dialog(win)
 
     def show_recent(self):
-        # Ultime 10 modifiche (menu Help -> Novità recenti...), da HISTORY.
-        win = tk.Toplevel(self.root)
-        win.title("Novità recenti")
-        win.resizable(False, False)
-        body = tk.Frame(win, padx=26, pady=20)
-        body.pack(fill="both", expand=True)
-        tk.Label(body, text="Ultime modifiche",
-                 font=("Segoe UI", 14, "bold"),
-                 foreground=_backend_fg()).pack(anchor="w")
+        win, body = self._dialog("Novità recenti", "Ultime modifiche", fg=_backend_fg())
         rows = tk.Frame(body)
         rows.pack(fill="x", pady=(8, 0))
         for i, (ver, date, desc) in enumerate(HISTORY[:10]):
@@ -263,60 +261,27 @@ class MandelbrotApp:
                      font=("Consolas", 11, "bold")).grid(row=i, column=0, sticky="nw", pady=2)
             tk.Label(rows, text=desc, wraplength=340, justify="left",
                      anchor="w").grid(row=i, column=1, sticky="nw", pady=2)
-        def chiudi(_e=None):
-            win._annullato = False
-            win.destroy()
-        tk.Button(win, text="Chiudi", command=chiudi).pack(pady=(18, 20))
-        win.bind("<Return>", chiudi)
-        self._modal(win)
+        self._run_close_dialog(win)
 
     def show_about(self):
-        # Scheda autore/versione (menu Help -> Informazioni...).
-        win = tk.Toplevel(self.root)
-        win.title("Informazioni")
-        win.resizable(False, False)
-        body = tk.Frame(win, padx=26, pady=20)
-        body.pack(fill="both", expand=True)
-        tk.Label(body, text="Insieme di Mandelbrot",
-                 font=("Segoe UI", 14, "bold"),
-                 foreground=_backend_fg()).pack(anchor="w")
+        win, body = self._dialog("Informazioni", "Insieme di Mandelbrot", fg=_backend_fg())
         tk.Label(body, text=f"Versione {VERSION}").pack(anchor="w", pady=(6, 0))
         tk.Label(body, text=f"{backend()} ({hw_name()})").pack(anchor="w")
-        # v7.2.1: riga OS (facilita i report su hardware non collaudati).
         import platform
         tk.Label(body, text="OS: %s" % platform.platform()).pack(anchor="w")
         tk.Label(body, text="Autore: Francesco Ferrara").pack(anchor="w", pady=(10, 0))
         tk.Label(body, text="Email: occhiobello@gmail.com").pack(anchor="w")
-        # v5.9.5: diagnostica CPU/Numba (perche' single-core?).
         tk.Label(body, text="CPU: " + _numba_diag(), wraplength=460,
                  justify="left").pack(anchor="w", pady=(10, 0))
-        # v6.2.1: diagnostica split CUDA (rapporto + esito parity).
         if S._CUDA_OK and len(S._CUDA_DEVICES) >= 2:
             tk.Label(body, text="Split: " + _cuda_split_diag(), wraplength=460,
                      justify="left").pack(anchor="w")
-        def chiudi(_e=None):
-            win._annullato = False
-            win.destroy()
-        tk.Button(win, text="Chiudi", command=chiudi).pack(pady=(18, 20))
-        win.bind("<Return>", chiudi)
-        self._modal(win)
+        self._run_close_dialog(win)
 
     def show_verify(self):
-        # v7.1.0: verifica del codice di autenticità di un benchmark (Help ->
-        # Verifica benchmark...). L'utente digita codice + nome hardware letto
-        # dallo screenshot (+ resto dei campi, precompilati coi default): il
-        # codice viene ricalcolato e confrontato. Solo decodifica+confronto,
-        # niente rete. Limite onesto: non ferma chi ricalcola il codice col
-        # programma modificato (open-source, offline), ma smaschera qualunque
-        # ritocco delle cifre nello screenshot.
-        win = tk.Toplevel(self.root)
-        win.title("Verifica benchmark")
-        win.resizable(False, False)
-        body = tk.Frame(win, padx=26, pady=20)
-        body.pack(fill="both", expand=True)
-        tk.Label(body, text="Verifica codice di autenticità",
-                 font=("Segoe UI", 14, "bold"),
-                 foreground=_backend_fg()).pack(anchor="w")
+        win, body = self._dialog("Verifica benchmark",
+                                 "Verifica codice di autenticità",
+                                 fg=_backend_fg())
         tk.Label(body, text="Digita codice e dati letti dallo screenshot:",
                  wraplength=460, justify="left").pack(anchor="w", pady=(6, 10))
         b = self.bench
@@ -740,7 +705,7 @@ class MandelbrotApp:
             if 0 <= _id < len(S._VULKAN_ADAPTERS) and _id != S._VULKAN_DEV:
                 self._select_vulkan_adapter(_id)
                 self._refresh_title()
-                threading.Thread(target=_warmup_vulkan_adapter,
+                threading.Thread(target=_warmup_active_gpu,
                                  daemon=True).start()
                 self.request_render("gpu: " + _vulkan_short_name(
                     S._VULKAN_ADAPTERS[S._VULKAN_DEV][1]))
@@ -749,17 +714,13 @@ class MandelbrotApp:
             return
         _pos = next((k for k, (d, _n) in enumerate(S._CUDA_DEVICES) if d == _id),
                     None)
-        # v7.1.2: con lo split attivo anche il "ritorno" sullo stesso device
-        # e' un cambio (lo split non tocca S._CUDA_DEV: senza questo check
-        # riselezionare la gpu di partenza veniva ignorato e il menu tornava
-        # su "Entrambe").
         if _pos is None or (_pos == S._CUDA_DEV and not S._CUDA_SPLIT_ON):
             self._sync_gpu_menu()
             return
         self._select_cuda_device(_pos)
         self._refresh_title()
         self._sync_split_widgets()
-        threading.Thread(target=_warmup_cuda_device, daemon=True).start()
+        threading.Thread(target=_warmup_active_gpu, daemon=True).start()
         self.request_render("gpu: " + _cuda_short_name(S._CUDA_DEVICES[S._CUDA_DEV][1]))
 
     def _sync_split_widgets(self):
@@ -1266,13 +1227,7 @@ class MandelbrotApp:
 
     def _bench_ask(self):
         """Dialog di conferma personalizzato: 'standard'/'esperto' o None."""
-        win = tk.Toplevel(self.root)
-        win.title("Benchmark Mandelbrot")
-        win.resizable(False, False)
-        body = tk.Frame(win, padx=26, pady=20)
-        body.pack(fill="both", expand=True)
-        tk.Label(body, text="Benchmark standardizzato",
-                 font=("Segoe UI", 14, "bold")).pack(anchor="w")
+        win, body = self._dialog("Benchmark Mandelbrot", "Benchmark standardizzato")
         tk.Label(body, text="Parametri del test (regione e durata comparabili tra versioni):").pack(anchor="w", pady=(2, 12))
         rows = tk.Frame(body)
         rows.pack(fill="x")
@@ -1281,7 +1236,6 @@ class MandelbrotApp:
             tk.Label(rows, text=v, anchor="e",
                      font=("Consolas", 12)).grid(row=i, column=1, sticky="e",
                                                   padx=(18, 0), pady=3)
-        # v7.2.0: pre-selezionata la modalita' memorizzata (config bench_mode).
         mode_var = tk.StringVar(value=getattr(self, "_bench_mode", "standard"))
         tk.Radiobutton(body, text="Standard: 1 prova da 8 s",
                        variable=mode_var, value="standard").pack(anchor="w", pady=(12, 0))
@@ -1297,8 +1251,7 @@ class MandelbrotApp:
         def cancel(_e=None):
             win._annullato = True
             win.destroy()
-        annulla = tk.Button(btns, text="Annulla", command=cancel)
-        annulla.pack(side="right")
+        tk.Button(btns, text="Annulla", command=cancel).pack(side="right")
         avvia = tk.Button(btns, text="Avvia", command=go)
         avvia.pack(side="right", padx=(0, 10))
         win.bind("<Return>", go)
@@ -1308,16 +1261,8 @@ class MandelbrotApp:
         return getattr(win, "_mode", "standard")
 
     def _bench_result_dialog(self, count, secs, err, factor=1.0):
-        """Dialog risultato: rendering/s grande e evidente come vero risultato.
-        v7.2.0: factor = diluizione GPU (4x area -> rps misurato x4);
-        le statistiche mostrano i rendering equivalenti a 1x."""
-        win = tk.Toplevel(self.root)
-        win.title("Benchmark \u2014 risultato")
-        win.resizable(False, False)
-        body = tk.Frame(win, padx=30, pady=22)
-        body.pack(fill="both", expand=True)
-        tk.Label(body, text="Risultato",
-                 font=("Segoe UI", 14, "bold")).pack(anchor="w")
+        """Dialog risultato: rendering/s grande e evidente come vero risultato."""
+        win, body = self._dialog("Benchmark \u2014 risultato", "Risultato", padx=30, pady=22)
         mode = getattr(self, "_bench_mode", "standard")
         if count > 0:
             rps = count / secs * factor  # v7.2.0: rps equivalenti a 1x
@@ -1390,12 +1335,7 @@ class MandelbrotApp:
             tk.Label(rows, text=v, anchor="e",
                      font=("Consolas", 11)).grid(row=i, column=1, sticky="e",
                                                   padx=(18, 0), pady=2)
-        def chiudi(_e=None):
-            win._annullato = False
-            win.destroy()
-        tk.Button(win, text="Chiudi", command=chiudi).pack(pady=(18, 20))
-        win.bind("<Return>", chiudi)
-        self._modal(win)
+        self._run_close_dialog(win)
 
     def run_benchmark(self):
         if getattr(self, "_bench_running", False):
@@ -1419,11 +1359,6 @@ class MandelbrotApp:
         self._start_bench()
 
     def _start_bench(self):
-        # v6.1.1: avvio effettivo (immediato o accodato da _photo_done).
-        # Il bench ha la GPU in esclusiva: cancella foto pendenti e il
-        # full-timer (niente take_photo concorrente per gli 8 s).
-        # v6.2: il bench e' sempre single-device (buf dedicato -> mai split).
-        S._BENCH_ACTIVE = True
         self._bench_after_photo = False
         self._photo_pending = False
         if self._full_timer is not None:
@@ -1571,29 +1506,16 @@ class MandelbrotApp:
             pass
 
     def _bench_done(self, count, secs, err, factor=1.0):
-        S._BENCH_ACTIVE = False
         self._bench_running = False
         self._busy_off()
         self.status.config(text="benchmark completato")
         self._bench_result_dialog(count, secs, err, factor)
-        # v6.1.1: rinfresca la vista corrente (durante il bench i render
-        # erano sospesi); rispetta la scala NxN persistente.
         self.recalc_scaled()
 
-    def recalc(self):
-        # v5.10.0: rifa il rendering della vista corrente (preview + full).
-        # v5.11.0: resta come percorso 1x1 di recalc_scaled.
-        self.request_render("ricalcolo manuale")
-
     def recalc_scaled(self):
-        # v5.11.0: dispatcher del pulsante unico "Ricalcola" + dropdown
-        # esplicito 1x1/2x2/4x4/8x8. 1x1 = vista corrente (pipeline
-        # interattiva), NxN = antialiasing in background (take_photo).
-        # v6.0: chiamato anche dal trace sul dropdown (selezione =
-        # ricalcolo immediato); legge la scala persistente via _recalc_n.
         n = self._recalc_n()
         if n <= 1:
-            self.recalc()
+            self.request_render("ricalcolo manuale")
         else:
             self.take_photo(n)
 

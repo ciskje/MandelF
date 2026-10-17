@@ -376,101 +376,55 @@ struct BenchmarkSheet: View {
     }
 
     private func start() {
-        if let eng = model.activeMetal() { startGPU(eng) } else { startCPU() }
-    }
-
-    private func startCPU() {
-        // Colored preview first (Fire, AA 1x).
+        let eng = model.activeMetal()
         let p = RenderParams(width: 320, height: 180,
                              centerX: Benchmark.centerX, centerY: Benchmark.centerY,
                              scale: Benchmark.scale, maxIter: Benchmark.maxIter,
-                             palette: 0, aa: 1, useDouble: true)
-        if let px = Fractal.render(p),
+                             palette: 0, aa: 1, useDouble: eng == nil)
+        if let px = (eng != nil ? eng?.render(p) : Fractal.render(p)),
            let cg = Png.cgImage(rgba: px, width: 320, height: 180) {
             preview = NSImage(cgImage: cg, size: NSSize(width: 320, height: 180))
         }
         let dbl = model.useDouble
         let flag = Locked(false)
         cancel = flag
-        let t0 = Date()
-        let lastTick = Locked(t0)
-        Task.detached(priority: .userInitiated) {
-            guard let r = Benchmark.run(useDouble: dbl, tick: { el, frames in
-                if flag.value { return false }
-                let now = Date()
-                if now.timeIntervalSince(lastTick.value) >= 1.0 {
-                    lastTick.value = now
-                    let rate = Double(frames * Benchmark.samples) / max(el, 0.2)
-                    let pct = min(100, Int(el / Benchmark.budget * 100))
-                    Task { @MainActor in
-                        progress = "\(pct)%  |  \(Benchmark.formatRate(rate))"
-                    }
+        let lastTick = Locked(Date())
+        let report: (Double, Int) -> Bool = { el, frames in
+            if flag.value { return false }
+            let now = Date()
+            if now.timeIntervalSince(lastTick.value) >= 1.0 {
+                lastTick.value = now
+                let rate = Double(frames * Benchmark.samples) / max(el, 0.2)
+                let pct = min(100, Int(el / Benchmark.budget * 100))
+                Task { @MainActor in
+                    progress = "\(pct)%  |  \(Benchmark.formatRate(rate))"
                 }
-                return true
-            }) else {
+            }
+            return true
+        }
+        Task.detached(priority: .userInitiated) {
+            let out: (frames: Int, seconds: Double)? = if let eng {
+                eng.bench(maxIter: Benchmark.maxIter, tick: report, isCancelled: { flag.value })
+                    .map { ($0.frames, $0.seconds) }
+            } else {
+                Benchmark.run(useDouble: dbl, tick: report).map { ($0.frames, $0.seconds) }
+            }
+            guard let r = out else {
                 await MainActor.run {
                     running = false
-                    progress = "Cancelled."
-                    AppLog.shared.add("Benchmark CPU: cancelled")
+                    progress = flag.value || eng == nil ? "Cancelled." : "GPU benchmark failed."
+                    AppLog.shared.add("Benchmark \(eng != nil ? "GPU" : "CPU"): \(progress)")
                 }
                 return
             }
-            await MainActor.run {
-                running = false
-                let mpix = r.mpixelS
-                runs.append((r.frames, r.seconds))
-                result = String(format: "%.1f Mpixel/s", mpix)
-                detail = String(format: "%d frames (%.1f frame/s) 960x540 AA1x in %.2f s on %@",
-                                r.frames, Double(r.frames) / r.seconds,
-                                r.seconds, Diagnostics.cpuName())
-                progress = "Done."
-            }
-        }
-    }
-
-    private func startGPU(_ eng: MetalEngine) {
-        // Colored preview first (Fire, AA 1x), offscreen.
-        let p = RenderParams(width: 320, height: 180,
-                             centerX: Benchmark.centerX, centerY: Benchmark.centerY,
-                             scale: Benchmark.scale, maxIter: Benchmark.maxIter,
-                             palette: 0, aa: 1, useDouble: false)
-        if let px = eng.render(p),
-           let cg = Png.cgImage(rgba: px, width: 320, height: 180) {
-            preview = NSImage(cgImage: cg, size: NSSize(width: 320, height: 180))
-        }
-        let flag = Locked(false)
-        cancel = flag
-        let t0 = Date()
-        let lastTick = Locked(t0)
-        Task.detached(priority: .userInitiated) {
-            guard let r = eng.bench(maxIter: Benchmark.maxIter, tick: { el, frames in
-                if flag.value { return false }
-                let now = Date()
-                if now.timeIntervalSince(lastTick.value) >= 1.0 {
-                    lastTick.value = now
-                    let rate = Double(frames * Benchmark.samples) / max(el, 0.2)
-                    let pct = min(100, Int(el / Benchmark.budget * 100))
-                    Task { @MainActor in
-                        progress = "\(pct)%  |  \(Benchmark.formatRate(rate))"
-                    }
-                }
-                return true
-            }, isCancelled: { flag.value }) else {
-                await MainActor.run {
-                    running = false
-                    progress = flag.value ? "Cancelled." : "GPU benchmark failed."
-                    AppLog.shared.add("Benchmark GPU: \(progress)")
-                }
-                return
-            }
+            let dev = eng?.deviceShortName ?? Diagnostics.cpuName()
             await MainActor.run {
                 running = false
                 let mpix = Double(r.frames * Benchmark.samples) / r.seconds / 1e6
                 runs.append((r.frames, r.seconds))
                 result = String(format: "%.1f Mpixel/s", mpix)
                 detail = String(format: "%d frames (%.1f frame/s) 960x540 AA1x in %.2f s on %@",
-                                r.frames, Double(r.frames) / r.seconds,
-                                r.seconds, eng.deviceShortName)
+                                r.frames, Double(r.frames) / r.seconds, r.seconds, dev)
                 progress = "Done."
             }
         }

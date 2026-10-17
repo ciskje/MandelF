@@ -56,7 +56,7 @@ public partial class MainWindow : Window
         HorizontalAlignment = HorizontalAlignment.Stretch, VerticalAlignment = VerticalAlignment.Stretch
     };
     private readonly TextBlock _status = new() { HorizontalAlignment = HorizontalAlignment.Stretch };
-    private MenuItem _mBack = new(), _mFwd = new(), _mJulia = new(), _mFav = new(), _mDelFav = new(), _mAnim = new();
+    private MenuItem _mBack = new(), _mFwd = new(), _mFav = new(), _mDelFav = new(), _mAnim = new();
     private MenuItem _juliaItem = new();
 
     private WriteableBitmap? _shown;
@@ -108,80 +108,6 @@ public partial class MainWindow : Window
             catch { }
         };
         Closing += (_, _) => OnClosing();
-        ArmFrameDump();
-        ArmAnimDebug();
-    }
-
-    // Debug hook: MV_ANIM=1 → after 3 s zoom to a deep zone and start the
-    // back-to-set animation, dumping frames to /tmp/mv-anim-N.png/.txt.
-    private void ArmAnimDebug()
-    {
-        if (Environment.GetEnvironmentVariable("MV_ANIM") != "1") return;
-        _ = Task.Run(async () =>
-        {
-            try
-            {
-                await Task.Delay(3000);
-                await Dispatcher.UIThread.InvokeAsync(() =>
-                {
-                    _cx = BenchmarkStandard.CenterX;
-                    _cy = BenchmarkStandard.CenterY;
-                    _scale = 0.01;
-                    _auto = true;
-                    _chkAuto.IsChecked = true;
-                    OnAnimateOrStop();
-                });
-                for (int n = 0; n < 8; n++)
-                {
-                    await Task.Delay(2000);
-                    int m = n;
-                    await Dispatcher.UIThread.InvokeAsync(
-                        () => DumpFrameTo($"/tmp/mv-anim-{m}.png", $"/tmp/mv-anim-{m}.txt"));
-                }
-            }
-            catch { }
-        });
-    }
-
-    // Diagnostic backdoor: launch with MV_DUMP=1 to write the currently
-    // displayed frame to /tmp/mv-frame.png (+ engine/status to /tmp/mv-frame.txt)
-    // ~12 s after startup.
-    private void ArmFrameDump()
-    {
-        if (Environment.GetEnvironmentVariable("MV_DUMP") != "1") return;
-        var t = new DispatcherTimer { Interval = TimeSpan.FromSeconds(12) };
-        t.Tick += (_, _) => { t.Stop(); DumpFrame(); };
-        t.Start();
-    }
-
-    private void DumpFrame()
-    {
-        try
-        {
-            Dispatcher.UIThread.Post(() => DumpFrameTo("/tmp/mv-frame.png", "/tmp/mv-frame.txt"));
-        }
-        catch { }
-    }
-
-    private void DumpFrameTo(string pngPath, string txtPath)
-    {
-        try
-        {
-            File.WriteAllText(txtPath,
-                $"engine={_engine} useDouble={_useDouble} gpuReady={_gpu.IsReady} " +
-                $"gpuErr={_gpu.LastError} status={_status.Text} shown={(_shown is not null ? $"{_shown.PixelSize.Width}x{_shown.PixelSize.Height}" : "null")} " +
-                $"bounds={_view.Bounds.Width:0}x{_view.Bounds.Height:0} seq={_renderSeq} " +
-                $"gpuRadio={_rGpu.IsEnabled} client={ClientSize.Width:0}x{ClientSize.Height:0}");
-            if (_shown is not null)
-            {
-                int w = _shown.PixelSize.Width, h = _shown.PixelSize.Height;
-                int[] px = new int[w * h];
-                using (var fb = _shown.Lock())
-                    unsafe { new Span<int>((void*)fb.Address, px.Length).CopyTo(px); }
-                PngWriter.WriteArgb(pngPath, px, w, h);
-            }
-        }
-        catch (Exception ex) { try { File.WriteAllText(txtPath, "dump failed: " + ex.Message); } catch { } }
     }
 
     // ---- layout (§5.2) ----
@@ -560,7 +486,6 @@ public partial class MainWindow : Window
                         unsafe { new Span<int>(buf).CopyTo(new Span<int>((void*)fb.Address, buf.Length)); }
                     _shown = bmp;
                     _view.Source = bmp;
-                    if (useGpu) _gpu.NotePresented(buf, w, h); // Capture() source (§4.1)
                     _status.Text = StatusText(cx, cy, scale, maxIter, pal, k, preview, julia, jcx, jcy);
                     Cursor = null;
                     _view.Cursor = new Cursor(StandardCursorType.Cross);
@@ -634,11 +559,9 @@ public partial class MainWindow : Window
         if (dist < 5) return; // drag vs click threshold (§5.5)
         var (ax, ay) = ComplexFromPixel(_downPx.X, _downPx.Y);
         var (bx, by) = ComplexFromPixel(pt.X, pt.Y);
-        double vw = Math.Max(1, _view.Bounds.Width);
         _cx += (ax - bx);
         _cy += (ay - by);
         _downPx = pt;
-        _ = ax; _ = vw;
         if (Environment.TickCount - _lastPreviewTick >= 80) // throttle 80 ms
         {
             _lastPreviewTick = Environment.TickCount;
@@ -1041,7 +964,6 @@ public partial class MainWindow : Window
                     unsafe { new Span<int>(buf).CopyTo(new Span<int>((void*)fb.Address, buf.Length)); }
                 _shown = bmp;
                 _view.Source = bmp;
-                if (useGpu) _gpu.NotePresented(buf, w, h);
             });
             return true;
         }

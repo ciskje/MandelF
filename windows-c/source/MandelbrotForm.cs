@@ -21,7 +21,6 @@ public partial class MandelbrotForm : Form
     private CancellationTokenSource? _renderCts;
     private CancellationTokenSource? _realTimeCts;
     private bool _realTimeActive;
-    private System.Windows.Forms.Timer _resizeTimer = null!;
     private System.Windows.Forms.Timer _dxTimer = null!;
     private bool _dxDirty = true; // next DirectX frame to redraw
 
@@ -31,7 +30,7 @@ public partial class MandelbrotForm : Form
     private bool _dragging;
     private MouseButtons _dragButton;
     private Point _downPos;   // where the button was pressed
-    private readonly Stack<ViewZone> _backZones = new();   // history: previous views
+    private readonly List<ViewZone> _backZones = new();   // history: previous views
     private readonly Stack<ViewZone> _forwardZones = new(); // history: subsequent views
     private ViewZone? _dragStartZone; // view at drag start (for history)
     private ToolStripMenuItem _backItem = null!;
@@ -52,9 +51,6 @@ public partial class MandelbrotForm : Form
         InitializeComponent();
         Text += $" v{AppVersion.Display}";
         Program.ApplyIcon(this);
-
-        _resizeTimer = new System.Windows.Forms.Timer { Interval = 300 };
-        _resizeTimer.Tick += (s, e) => { _resizeTimer.Stop(); RenderAsync(); };
 
         _dxTimer = new System.Windows.Forms.Timer { Interval = 16 }; // loop realtime ~60fps
         _dxTimer.Tick += DxTimer_Tick;
@@ -457,17 +453,12 @@ public partial class MandelbrotForm : Form
     private ViewZone CurrentZone() => new(_centerX, _centerY, _scale, MaxIter, _julia, _jcx, _jcy);
 
     // Records the current view before a committed change (max 200).
-    private void PushHistory()
+    private void PushHistory(ViewZone? z = null)
     {
-        _backZones.Push(CurrentZone());
+        _backZones.Add(z ?? CurrentZone());
         _forwardZones.Clear();
         while (_backZones.Count > 200)
-        {
-            var arr = _backZones.ToArray();
-            _backZones.Clear();
-            foreach (var z in arr[..^1].Reverse())
-                _backZones.Push(z);
-        }
+            _backZones.RemoveAt(0);
         UpdateHistoryMenu();
     }
 
@@ -475,14 +466,16 @@ public partial class MandelbrotForm : Form
     {
         if (_backZones.Count == 0) return;
         _forwardZones.Push(CurrentZone());
-        ApplyZone(_backZones.Pop());
+        var prev = _backZones[^1];
+        _backZones.RemoveAt(_backZones.Count - 1);
+        ApplyZone(prev);
         UpdateHistoryMenu();
     }
 
     private void GoForward()
     {
         if (_forwardZones.Count == 0) return;
-        _backZones.Push(CurrentZone());
+        _backZones.Add(CurrentZone());
         ApplyZone(_forwardZones.Pop());
         UpdateHistoryMenu();
     }
@@ -537,12 +530,12 @@ public partial class MandelbrotForm : Form
         {
             ToolTipText = "Go to a saved favorite zone",
         };
-        _favoritesMenu.DropDownOpening += (s, e) => RebuildFavoritesMenu();
+        _favoritesMenu.DropDownOpening += (s, e) => RebuildFavoritesMenu(_favoritesMenu, delete: false);
         _removeFavMenu = new ToolStripMenuItem("Delete favorite")
         {
             ToolTipText = "Delete a favorite zone file",
         };
-        _removeFavMenu.DropDownOpening += (s, e) => RebuildRemoveFavMenu();
+        _removeFavMenu.DropDownOpening += (s, e) => RebuildFavoritesMenu(_removeFavMenu, delete: true);
         viewMenu.DropDownItems.AddRange(new ToolStripItem[] {
             _backItem, _forwardItem, new ToolStripSeparator(),
             _juliaItem, new ToolStripSeparator(),
@@ -597,41 +590,22 @@ public partial class MandelbrotForm : Form
         }
     }
 
-    private void RebuildFavoritesMenu()
+    private void RebuildFavoritesMenu(ToolStripMenuItem menu, bool delete)
     {
-        _favoritesMenu.DropDownItems.Clear();
+        menu.DropDownItems.Clear();
         string[] files = FavoriteFiles();
         if (files.Length == 0)
         {
-            _favoritesMenu.DropDownItems.Add(new ToolStripMenuItem("(none)") { Enabled = false });
-            return;
-        }
-        foreach (string file in files)
-        {
-            string name = Path.GetFileNameWithoutExtension(file);
-            var item = new ToolStripMenuItem(name, null, (s, e) => LoadFavoriteFile(file))
-            {
-                ToolTipText = file,
-            };
-            _favoritesMenu.DropDownItems.Add(item);
-        }
-    }
-
-    private void RebuildRemoveFavMenu()
-    {
-        _removeFavMenu.DropDownItems.Clear();
-        string[] files = FavoriteFiles();
-        if (files.Length == 0)
-        {
-            _removeFavMenu.DropDownItems.Add(new ToolStripMenuItem("(none)") { Enabled = false });
+            menu.DropDownItems.Add(new ToolStripMenuItem("(none)") { Enabled = false });
             return;
         }
         foreach (string file in files)
         {
             string name = Path.GetFileNameWithoutExtension(file);
             string captured = file;
-            _removeFavMenu.DropDownItems.Add(new ToolStripMenuItem(name, null, (s, e) =>
+            var item = new ToolStripMenuItem(name, null, (s, e) =>
             {
+                if (!delete) { LoadFavoriteFile(captured); return; }
                 try
                 {
                     File.Delete(captured);
@@ -642,7 +616,8 @@ public partial class MandelbrotForm : Form
                     MessageBox.Show(this, $"Cannot delete:\n{ex.Message}",
                         "Favorite zone", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 }
-            }));
+            }) { ToolTipText = captured };
+            menu.DropDownItems.Add(item);
         }
     }
 
@@ -1077,11 +1052,7 @@ public partial class MandelbrotForm : Form
         else
         {
             if (_dragStartZone != null)
-            {
-                _backZones.Push(_dragStartZone); // pan is committed: can go back
-                _forwardZones.Clear();
-                UpdateHistoryMenu();
-            }
+                PushHistory(_dragStartZone); // pan is committed: can go back
             InvalidateView(); // ensures rendering of the final pan position
         }
     }

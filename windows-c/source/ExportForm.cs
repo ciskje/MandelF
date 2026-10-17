@@ -18,7 +18,6 @@ public partial class ExportForm : Form
     private readonly bool _useDirectX;
     private readonly bool _julia;
     private readonly double _jcx, _jcy;
-    private readonly double _aspect;
     private readonly int _viewW0, _viewH0;
     private CancellationTokenSource? _cts;
     private bool _rendering;
@@ -46,7 +45,6 @@ public partial class ExportForm : Form
         _julia = julia;
         _jcx = juliaCx;
         _jcy = juliaCy;
-        _aspect = Math.Max(1, viewSize.Height) / (double)Math.Max(1, viewSize.Width);
         _viewW0 = Math.Max(320, viewSize.Width);
         _viewH0 = Math.Max(240, viewSize.Height);
         txtW.Text = _viewW0.ToString();

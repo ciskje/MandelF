@@ -32,7 +32,6 @@ _KERNEL_F64 = None
 _BUF = None
 _CUDA_DEVICES = []
 _CUDA_DEV = 0
-_BENCH_ACTIVE = False
 _CUDA_SPLIT_ON = False
 _CUDA_SPLIT_RATIO = 0.5
 _CUDA_SPLIT_MIN_H = 32
@@ -58,6 +57,5 @@ _PINNED = {}
 _NUMBA_OK = {"f64": False, "f32": False}
 _NUMBA_STATUS = {"import": "ok", "f64": "warmup in corso...", "f32": "warmup in corso...", "tempo": None}
 _GEN = np.zeros(1, dtype=np.int32)
-_NUMBA_AVAILABLE = False
 _CPU_WS = {}
 _HW_CACHE = {}

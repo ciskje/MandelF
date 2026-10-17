@@ -1,5 +1,12 @@
 # CHANGELOG
 
+## 7.3.1 — Ponytail-audit refactor
+- No behavior change: removed Avalonia MVVM template scaffolding
+  (`ViewLocator`, `ViewModels`, `DelegateCommand`, `CommunityToolkit.Mvvm`),
+  dead debug backdoors (`MV_ANIM`/`MV_DUMP`), shared scalar tails and
+  interpolation math, shrunk the hand-rolled PNG writer.
+  Verified: `dotnet build` 0 warnings, `dotnet test` 19/19.
+
 ## 7.3.0 — MandelF lockstep alignment
 - Version 7.3.0 (was 2.22.7); executable renamed `MandelF`;
   `.app`/`dmg` named `MandelF-avalonia-*`; `source/` layout.

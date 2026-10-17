@@ -104,19 +104,12 @@ public sealed class ZoomVideoForm : Window
         _go.IsEnabled = false;
         string tmp = Path.Combine(Path.GetTempPath(), $"MandelC#-video-{Guid.NewGuid():N}"[..24]);
         Directory.CreateDirectory(tmp);
-        bool ok = false;
         try
         {
             for (int i = 0; i < n; i++)
             {
                 _cts.Token.ThrowIfCancellationRequested();
-                double t = n == 1 ? 1 : (double)i / (n - 1);
-                double te = 1 - Math.Pow(1 - t, 3);
-                double scale = _startScale * Math.Pow(Mandelbrot.InitialScale / _startScale, te);
-                // center linear in scale toward (-0.5, 0) (§6.3)
-                double f = 1 - (scale - Mandelbrot.InitialScale) / (_startScale - Mandelbrot.InitialScale);
-                double cx = _sx + (Mandelbrot.InitialCenterX - _sx) * f;
-                double cy = _sy + (Mandelbrot.InitialCenterY - _sy) * f;
+                var (cx, cy, scale) = MainWindow.BackToSetFrame(_sx, _sy, _startScale, i, n);
                 int iter = Mandelbrot.AutoIterForScale(scale);
                 _label.Text = $"Frame {i + 1}/{n}…";
                 _bar.Value = 100.0 * i / n;
@@ -173,18 +166,12 @@ public sealed class ZoomVideoForm : Window
                 var last10 = string.Join("\n", err.Split('\n').TakeLast(10));
                 throw new InvalidOperationException($"ffmpeg exit {proc.ExitCode}:\n{last10}");
             }
-            ok = true;
             _label.Text = "Done.";
             Close();
         }
         catch (OperationCanceledException)
         {
             _label.Text = "Cancelled.";
-            try
-            {
-                if (ok || true) { }
-            }
-            catch { }
         }
         catch (Exception ex)
         {
@@ -197,15 +184,7 @@ public sealed class ZoomVideoForm : Window
             _cts?.Dispose(); _cts = null;
             _go.IsEnabled = true;
             _bar.Value = 0;
-            if (ok || (_label.Text == "Cancelled."))
-            {
-                try { if (Directory.Exists(tmp)) Directory.Delete(tmp, true); } catch { }
-            }
-            else if (string.IsNullOrEmpty(_lastFolder))
-            {
-                // failure: delete temp too (§6.3 keeps it only when ffmpeg absent)
-                try { if (Directory.Exists(tmp)) Directory.Delete(tmp, true); } catch { }
-            }
+            try { if (!string.IsNullOrEmpty(tmp) && Directory.Exists(tmp)) Directory.Delete(tmp, true); } catch { }
         }
     }
 }

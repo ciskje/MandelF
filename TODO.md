@@ -26,6 +26,7 @@ in that environment.
 
 ## Done
 
+- [x] `generic`: bump `7.3.0` → `7.3.1` (ponytail-audit refactor, lockstep all envs) — `win-c:[x]` / `mac-avalonia:[x]` source + tests green on Windows; `mac-swift:[ ]` `windows-python:[ ]` `macos-python:[ ]` rebuild/publish on their machines.
 - [x] `windows-c`: publish `windows-c-v7.3.0` GitHub release with setup exe
   (`dist/MandelF-Setup-7.3.0-win-x64.exe`, 47 MB, built + install-compiled
   on Windows; tag moved to release commit).

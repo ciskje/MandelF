@@ -29,7 +29,6 @@ public enum EngineSel: Hashable {
     // Output
     @Published var image: NSImage?
     @Published var status = "Ready"
-    @Published var computing = false
 
     var history = History()
     @Published private(set) var canBack = false
@@ -144,7 +143,7 @@ public enum EngineSel: Hashable {
     }
 
     func apply(_ z: ViewZone, push: Bool) {
-        if push { pushHistory(z) }
+        if push { pushHistory(zone()) }
         centerX = z.centerX; centerY = z.centerY; scale = z.scale
         maxIterManual = Spec.clampIter(z.maxIter); iterAuto = false
         julia = z.julia; jcx = z.jcx; jcy = z.jcy
@@ -172,7 +171,6 @@ public enum EngineSel: Hashable {
                                   julia: julia, jcx: jcx, jcy: jcy)
         let auto = iterAuto
         let eng = activeMetal()
-        computing = true
         status = "Computing \(preview ? "preview " : "")\(rw)x\(rh), iter=\(params.maxIter)..."
         Task.detached(priority: .userInitiated) {
             let (px, fellBack) = Self.renderOn(eng, params)
@@ -185,16 +183,10 @@ public enum EngineSel: Hashable {
                     self.image = NSImage(cgImage: cg,
                                          size: NSSize(width: rw, height: rh))
                 }
-                self.computing = false
                 self.status = self.statusText(w: rw, h: rh, auto: auto,
                                               preview: preview)
             }
         }
-    }
-
-    func cancelRenders() {
-        token += 1
-        computing = false
     }
 
     // MARK: - Status (§5.4, CPU form)
@@ -250,17 +242,12 @@ public enum EngineSel: Hashable {
         }
         backTask?.cancel()
         backTask = Task { @MainActor in
-            let s0 = scale, x0 = centerX, y0 = centerY
             let savedAA = aaIndex
             aaIndex = 0 // forced 1x during animation (§5.11)
-            for i in 0 ..< Spec.backFrames {
+            for (i, f) in Video.frames(fromScale: scale, fromX: centerX, fromY: centerY,
+                                       count: Spec.backFrames).enumerated() {
                 if Task.isCancelled { break }
-                let t = Double(i) / Double(Spec.backFrames - 1)
-                let te = 1.0 - pow(1.0 - t, 3.0)
-                scale = s0 * pow(Spec.fullScale / s0, te)
-                let f = (s0 - scale) / (s0 - Spec.fullScale)
-                centerX = x0 + (Spec.homeX - x0) * f
-                centerY = y0 + (Spec.homeY - y0) * f
+                scale = f.scale; centerX = f.centerX; centerY = f.centerY
                 status = "Back to set \(i + 1)/\(Spec.backFrames)... (Esc to stop)"
                 requestRenderNow()
                 try? await Task.sleep(nanoseconds: 33_000_000)
@@ -314,20 +301,12 @@ public enum EngineSel: Hashable {
                 if let reason = z.validated() {
                     status = "Load zone failed: \(reason)"
                 } else {
-                    applyLoaded(z)
+                    apply(z, push: true)
                 }
             } catch {
                 status = "Load zone failed: \(error.localizedDescription)"
             }
         }
-    }
-
-    private func applyLoaded(_ z: ViewZone) {
-        pushHistory(zone())
-        centerX = z.centerX; centerY = z.centerY; scale = z.scale
-        maxIterManual = Spec.clampIter(z.maxIter); iterAuto = false
-        julia = z.julia; jcx = z.jcx; jcy = z.jcy
-        requestRender(w: Int(viewW), h: Int(viewH), preview: false)
     }
 
     func saveFavorite() {

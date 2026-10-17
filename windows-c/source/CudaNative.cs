@@ -13,18 +13,12 @@ internal static class CudaNative
     private const string Dll = "nvcuda.dll";
 
     // Device attributes queried (CUdevice_attribute values).
-    internal const int AttrWarpSize = 10;
     internal const int AttrMultiprocessorCount = 16;
-    internal const int AttrMaxThreadsPerMultiprocessor = 39;
-    internal const int AttrClockRate = 13;
     internal const int AttrComputeCapabilityMajor = 75;
     internal const int AttrComputeCapabilityMinor = 76;
 
     [DllImport(Dll)]
     private static extern int cuInit(uint flags);
-
-    [DllImport(Dll)]
-    private static extern int cuDriverGetVersion(out int version);
 
     [DllImport(Dll)]
     private static extern int cuDeviceGetCount(out int count);
@@ -116,20 +110,6 @@ internal static class CudaNative
 
     // Initializes the driver (idempotent). Must run before any other call.
     internal static void Init() => Check(cuInit(0), "cuInit");
-
-    // Driver version as major*1000 + minor*10 (e.g. 12030 = 12.3).
-    // Returns (int): Output: driver version, 0 when the query fails.
-    internal static int DriverVersion()
-    {
-        try
-        {
-            return cuDriverGetVersion(out int v) == 0 ? v : 0;
-        }
-        catch
-        {
-            return 0;
-        }
-    }
 
     // Number of CUDA-capable devices.
     // Returns (int): Output: device count (0 when none).

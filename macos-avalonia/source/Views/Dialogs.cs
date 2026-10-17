@@ -1,20 +1,9 @@
-using System.Windows.Input;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Layout;
 using Avalonia.Media;
 
 namespace MandelbrotViewer.Views;
-
-public sealed class DelegateCommand : ICommand
-{
-    private readonly Action _run;
-    public DelegateCommand(Action run) => _run = run;
-    public event EventHandler? CanExecuteChanged;
-    public bool CanExecute(object? p) => true;
-    public void Execute(object? p) => _run();
-    public void Raise() => CanExecuteChanged?.Invoke(this, EventArgs.Empty);
-}
 
 public static class Dialogs
 {

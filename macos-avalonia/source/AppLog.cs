@@ -25,10 +25,4 @@ public static class AppLog
         lock (Gate)
             return Lines.ToArray();
     }
-
-    public static void Clear()
-    {
-        lock (Gate)
-            Lines.Clear();
-    }
 }

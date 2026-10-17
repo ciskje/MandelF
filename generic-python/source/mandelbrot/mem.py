@@ -9,9 +9,7 @@ def _host_free_bytes():
     """RAM libera (byte), senza nuove dipendenze: GlobalMemoryStatusEx su
     Windows, sysconf AVPHYS_PAGES altrove. 0 se non determinabile."""
     try:
-        import platform
         if platform.system() == "Windows":
-            import ctypes
             class _MS(ctypes.Structure):
                 _fields_ = [("dwLength", ctypes.c_ulong),
                             ("dwMemoryLoad", ctypes.c_ulong),
@@ -27,7 +25,6 @@ def _host_free_bytes():
             if ctypes.windll.kernel32.GlobalMemoryStatusEx(ctypes.byref(st)):
                 return int(st.ullAvailPhys)
         else:
-            import os
             return int(os.sysconf("SC_PAGE_SIZE")) * int(os.sysconf("SC_AVPHYS_PAGES"))
     except Exception:
         pass

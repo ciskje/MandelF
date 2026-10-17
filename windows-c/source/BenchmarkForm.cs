@@ -78,47 +78,23 @@ public partial class BenchmarkForm : Form
         lblLive.Text = "0%  |  —";
         lblLive.Refresh();
 
-        // First frame of the benchmark zone made visible also for engines
-        // that do not draw on a bitmap in the Benchmark window: DirectX renders
-        // offscreen (colored) and shows it in previewBox, like CUDA/CPU.
-        if (_useDirectX)
+        // First frame of the benchmark zone made visible for all engines:
+        // DirectX renders offscreen (colored) and shows it in previewBox, like CUDA/CPU.
+        try
         {
-            try
+            var preview = await Task.Run(() => RenderBenchmarkPreview(_cts.Token), _cts.Token);
+            if (preview != null && !IsDisposed)
             {
-                var preview = await Task.Run(
-                    () => DxMandelbrot.RenderPreviewToBitmap(BenchmarkStandard.CenterX, BenchmarkStandard.CenterY, BenchmarkStandard.Scale, BenchmarkStandard.Width, BenchmarkStandard.Height, BenchmarkStandard.MaxIter, 1, Palette.Fire),
-                    _cts.Token);
-                if (preview != null && !IsDisposed)
-                {
-                    var old = previewBox.Image;
-                    previewBox.Image = preview;
-                    previewBox.Visible = true;
-                    old?.Dispose();
-                }
+                var old = previewBox.Image;
+                previewBox.Image = preview;
+                previewBox.Visible = true;
+                old?.Dispose();
             }
-            catch (OperationCanceledException) { }
-            catch { }
         }
-        else
-        {
-            try
-            {
-                var preview = await Task.Run(() => RenderBenchmarkPreview(_cts.Token), _cts.Token);
-                if (preview != null && !IsDisposed)
-                {
-                    var old = previewBox.Image;
-                    previewBox.Image = preview;
-                    previewBox.Visible = true;
-                    old?.Dispose();
-                }
-            }
-            catch (OperationCanceledException) { }
-            catch { }
-        }
+        catch (OperationCanceledException) { }
+        catch { }
 
-        IProgress<BenchmarkProgress> progress = _useDirectX
-            ? new Progress<BenchmarkProgress>(UpdateProgress)
-            : new Progress<BenchmarkProgress>(UpdateProgress);
+        IProgress<BenchmarkProgress> progress = new Progress<BenchmarkProgress>(UpdateProgress);
 
         try
         {
@@ -296,6 +272,8 @@ public partial class BenchmarkForm : Form
     // zone, as DirectX already does with the first frame on the swapchain.
     private Bitmap? RenderBenchmarkPreview(CancellationToken ct)
     {
+        if (_useDirectX)
+            return DxMandelbrot.RenderPreviewToBitmap(BenchmarkStandard.CenterX, BenchmarkStandard.CenterY, BenchmarkStandard.Scale, BenchmarkStandard.Width, BenchmarkStandard.Height, BenchmarkStandard.MaxIter, 1, Palette.Fire);
         var bmp = new Bitmap(BenchmarkStandard.Width, BenchmarkStandard.Height, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
         try
         {

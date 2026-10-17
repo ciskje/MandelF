@@ -16,7 +16,6 @@ public sealed class GpuEngine : IDisposable
     public string DeviceShortName { get; private set; } = "";
     public string Details { get; private set; } = "Not initialized";
     public bool IsReady { get; private set; }
-    public bool SupportsDouble => false;
     public (int X, int Y) TuneSplit { get; private set; } = (1, 1);
 
     public static string[] AdapterNames()
@@ -37,8 +36,6 @@ public sealed class GpuEngine : IDisposable
                 return name[p.Length..].Trim();
         return name;
     }
-
-    public bool WantsDouble(double scale) => scale < 1e-3;
 
     public bool TryInitialize(string? deviceName)
     {
@@ -129,20 +126,6 @@ public sealed class GpuEngine : IDisposable
             }
         }
         catch { return null; }
-    }
-
-    private int[] _lastFrame = Array.Empty<int>();
-    private int _lastW, _lastH;
-
-    public void NotePresented(int[] px, int w, int h)
-    {
-        lock (_gate) { _lastFrame = (int[])px.Clone(); _lastW = w; _lastH = h; }
-    }
-
-    // Pixel copy of the current on-screen frame (§4.1 Capture).
-    public (int[] Pixels, int W, int H) Capture()
-    {
-        lock (_gate) return ((int[])_lastFrame.Clone(), _lastW, _lastH);
     }
 
     // Validation readback of raw per-sample iteration counts (§4.3 bench shape).

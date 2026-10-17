@@ -4,6 +4,13 @@ Versioning `X.Y.Z` (if `Z` is 0, short notation `X.Y`). Bump rules in
 `AGENTS.md`. The version is shown in the window title. Entries are grouped
 by minor series below, newest first.
 ## v7.3.x — MandelF lockstep
+- **v7.3.1** — Ponytail-audit refactor, no behavior change: removed dead code,
+  shared duplicated row/tail helpers, unified short-name/warmup/dialog
+  helpers, dropped the `CommunityToolkit.Mvvm` dependency.
+  Verified: clean build (0 warnings, 0 errors).
+  Files: `Mandelbrot.cs`, `Palette.cs`, `MandelbrotForm.cs`,
+  `BenchmarkForm.cs`, `CudaNative.cs`, `DxMandelbrot.cs`, `ExportForm.cs`,
+  `TODO.md`, `CHANGELOG.md`, `AppVersion.cs`, `.csproj`.
 - **v7.3.0** — Version alignment with MandelF monorepo (MandelPy 7.3.0 line);
   executable renamed `MandelF.exe`, installer `MandelF-Setup-7.3.0.exe`.
   No behavior change vs v2.24.2.

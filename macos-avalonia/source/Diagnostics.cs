@@ -107,6 +107,7 @@ public static class Diagnostics
         double top = cy - h * 0.5 * px;
         long exact = 0;
         long absDiff = 0;
+        long cpuSum = 0;
         uint maxDiff = 0;
         sw.Restart();
         for (int y = 0; y < h; y++)
@@ -115,6 +116,7 @@ public static class Diagnostics
                 float ccx = (float)(cx + (x - w * 0.5) * px);
                 float ccy = (float)(top + y * px);
                 int it = Mandelbrot.EscapeFloat(ccx, ccy, 0, 0, mi).Iter;
+                cpuSum += it;
                 uint gi = g[y * w + x];
                 if ((uint)it == gi) exact++;
                 uint d = (uint)Math.Abs(it - (int)gi);
@@ -127,19 +129,8 @@ public static class Diagnostics
         Console.WriteLine($"exact match: {exact}/{n} ({100.0 * exact / n:0.00}%)");
         Console.WriteLine($"mean abs diff: {(double)absDiff / n:0.000} iters, max diff: {maxDiff}");
         Console.WriteLine($"GPU readback: {gpuMs:0} ms, CPU float loop: {cpuMs:0} ms");
-        Console.WriteLine($"mean GPU count: {g.Average(v => (double)v):0} / mean CPU count: {MeanCpu(w, h, cx, cy, scale, mi):0}");
+        Console.WriteLine($"mean GPU count: {g.Average(v => (double)v):0} / mean CPU count: {(double)cpuSum / n:0}");
         return exact * 100 / n >= 95 ? 0 : 1;
-    }
-
-    private static double MeanCpu(int w, int h, double cx, double cy, double scale, int mi)
-    {
-        double px = scale / w;
-        double top = cy - h * 0.5 * px;
-        long sum = 0;
-        for (int y = 0; y < h; y++)
-            for (int x = 0; x < w; x++)
-                sum += Mandelbrot.EscapeFloat((float)(cx + (x - w * 0.5) * px), (float)(top + y * px), 0, 0, mi).Iter;
-        return (double)sum / (w * h);
     }
 
     private static int RenderPng(string[] a)

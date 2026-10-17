@@ -195,102 +195,66 @@ public enum Fractal {
     static func renderRowVD(y: Int, p: RenderParams, k: Int, lut: [UInt32],
                             invMax: Double, originX: Double, topY: Double,
                             pixelSize: Double, base: UnsafeMutablePointer<UInt8>) {
-        let w = p.width
-        var it = [Int](repeating: 0, count: w)
-        var md = [Double](repeating: 4.0, count: w)
-        var al = [Bool](repeating: false, count: w)
-        var zxr = [Double](repeating: 0, count: w)
-        var zyr = [Double](repeating: 0, count: w)
-        var ccx = [Double](repeating: 0, count: w)
-        var ccy = [Double](repeating: 0, count: w)
+        let w = p.width, w4 = (w + 3) & ~3
+        var it = [Int](repeating: 0, count: w4)
+        var md = [Double](repeating: 4.0, count: w4)
+        var al = [Bool](repeating: false, count: w4)
+        var zxr = [Double](repeating: 0, count: w4)
+        var zyr = [Double](repeating: 0, count: w4)
+        var ccx = [Double](repeating: 0, count: w4)
+        var ccy = [Double](repeating: 0, count: w4)
         var rA = [Int](repeating: 0, count: w)
         var gA = [Int](repeating: 0, count: w)
         var bA = [Int](repeating: 0, count: w)
         let four = SIMD4<Double>(repeating: 4.0)
         for sy in 0 ..< k {
-            let gby = (p.offsetY + y) * k + sy
-            let py = topY + Double(gby) * pixelSize
+            let py = topY + Double((p.offsetY + y) * k + sy) * pixelSize
             for sx in 0 ..< k {
                 var nAlive = 0
                 for x in 0 ..< w {
-                    let gbx = (p.offsetX + x) * k + sx
-                    let px = originX + Double(gbx) * pixelSize
-                    if p.julia {
-                        zxr[x] = px; zyr[x] = py
-                        ccx[x] = p.jcx; ccy[x] = p.jcy
-                        al[x] = true; it[x] = p.maxIter; nAlive += 1
-                    } else if interior(px: px, py: py) {
+                    let px = originX + Double((p.offsetX + x) * k + sx) * pixelSize
+                    if !p.julia && interior(px: px, py: py) {
                         al[x] = false; it[x] = p.maxIter
                     } else {
-                        zxr[x] = 0; zyr[x] = 0
-                        ccx[x] = px; ccy[x] = py
+                        zxr[x] = p.julia ? px : 0; zyr[x] = p.julia ? py : 0
+                        ccx[x] = p.julia ? p.jcx : px; ccy[x] = p.julia ? p.jcy : py
                         al[x] = true; it[x] = p.maxIter; nAlive += 1
                     }
                 }
                 var iter = 0
                 while iter < p.maxIter && nAlive > 0 {
                     var x = 0
-                    while x + 4 <= w {
-                        var anyAlive = false
-                        for l in 0 ..< 4 {
-                            if al[x + l] { anyAlive = true; break }
-                        }
-                        if anyAlive {
+                    while x < w4 {
+                        if al[x] || al[x + 1] || al[x + 2] || al[x + 3] {
                             let zx = SIMD4(zxr[x], zxr[x + 1], zxr[x + 2], zxr[x + 3])
                             let zy = SIMD4(zyr[x], zyr[x + 1], zyr[x + 2], zyr[x + 3])
                             let cx = SIMD4(ccx[x], ccx[x + 1], ccx[x + 2], ccx[x + 3])
                             let cy = SIMD4(ccy[x], ccy[x + 1], ccy[x + 2], ccy[x + 3])
                             let zx2 = zx * zx, zy2 = zy * zy
                             let esc = (zx2 + zy2) .> four
-                            for l in 0 ..< 4 where al[x + l] {
-                                if esc[l] {
-                                    al[x + l] = false
-                                    nAlive -= 1
-                                    it[x + l] = iter
-                                    md[x + l] = (zx2 + zy2)[l]
-                                }
+                            for l in 0 ..< 4 where al[x + l] && esc[l] {
+                                al[x + l] = false; nAlive -= 1
+                                it[x + l] = iter; md[x + l] = (zx2 + zy2)[l]
                             }
-                            let nzx = zx2 - zy2 + cx
-                            let nzy = 2.0 * zx * zy + cy
-                            for l in 0 ..< 4 {
-                                if al[x + l] {
-                                    zxr[x + l] = nzx[l]
-                                    zyr[x + l] = nzy[l]
-                                }
+                            let nzx = zx2 - zy2 + cx, nzy = 2.0 * zx * zy + cy
+                            for l in 0 ..< 4 where al[x + l] {
+                                zxr[x + l] = nzx[l]; zyr[x + l] = nzy[l]
                             }
                         }
                         x += 4
-                    }
-                    while x < w {
-                        if al[x] {
-                            let zx = zxr[x], zy = zyr[x]
-                            let zx2 = zx * zx, zy2 = zy * zy
-                            if zx2 + zy2 > 4.0 {
-                                al[x] = false
-                                nAlive -= 1
-                                it[x] = iter
-                                md[x] = zx2 + zy2
-                            } else {
-                                zyr[x] = 2.0 * zx * zy + ccy[x]
-                                zxr[x] = zx2 - zy2 + ccx[x]
-                            }
-                        }
-                        x += 1
                     }
                     iter += 1
                 }
                 for x in 0 ..< w where it[x] < p.maxIter {
                     let smooth = Double(it[x]) + 1.0 - log2(0.5 * log(max(md[x], 4.0)))
-                    let (cr, cg, cb) = Palette.lookup(lut, smooth: smooth,
-                                                      invMaxIter: invMax)
+                    let (cr, cg, cb) = Palette.lookup(lut, smooth: smooth, invMaxIter: invMax)
                     rA[x] += Int(cr); gA[x] += Int(cg); bA[x] += Int(cb)
                 }
             }
         }
         let n = k * k
         for x in 0 ..< w {
-            writePixel(base: base, width: w, x: x, y: y,
-                       r: rA[x], g: gA[x], b: bA[x], n: n)
+            writePixel(base: base, width: w, x: x, y: y, r: rA[x], g: gA[x], b: bA[x], n: n)
         }
     }
 
@@ -298,100 +262,67 @@ public enum Fractal {
     static func renderRowVF(y: Int, p: RenderParams, k: Int, lut: [UInt32],
                             invMax: Double, originX: Double, topY: Double,
                             pixelSize: Double, base: UnsafeMutablePointer<UInt8>) {
-        let w = p.width
-        var it = [Int](repeating: 0, count: w)
-        var md = [Float](repeating: 4.0, count: w)
-        var al = [Bool](repeating: false, count: w)
-        var zxr = [Float](repeating: 0, count: w)
-        var zyr = [Float](repeating: 0, count: w)
-        var ccx = [Float](repeating: 0, count: w)
-        var ccy = [Float](repeating: 0, count: w)
+        let w = p.width, w4 = (w + 3) & ~3
+        var it = [Int](repeating: 0, count: w4)
+        var md = [Float](repeating: 4.0, count: w4)
+        var al = [Bool](repeating: false, count: w4)
+        var zxr = [Float](repeating: 0, count: w4)
+        var zyr = [Float](repeating: 0, count: w4)
+        var ccx = [Float](repeating: 0, count: w4)
+        var ccy = [Float](repeating: 0, count: w4)
         var rA = [Int](repeating: 0, count: w)
         var gA = [Int](repeating: 0, count: w)
         var bA = [Int](repeating: 0, count: w)
         let four = SIMD4<Float>(repeating: 4.0)
         for sy in 0 ..< k {
-            let gby = (p.offsetY + y) * k + sy
-            let py = topY + Double(gby) * pixelSize
+            let py = topY + Double((p.offsetY + y) * k + sy) * pixelSize
             for sx in 0 ..< k {
                 var nAlive = 0
                 for x in 0 ..< w {
-                    let gbx = (p.offsetX + x) * k + sx
-                    let px = originX + Double(gbx) * pixelSize
-                    if p.julia {
-                        zxr[x] = Float(px); zyr[x] = Float(py)
-                        ccx[x] = Float(p.jcx); ccy[x] = Float(p.jcy)
-                        al[x] = true; it[x] = p.maxIter; nAlive += 1
-                    } else if interior(px: px, py: py) {
+                    let px = originX + Double((p.offsetX + x) * k + sx) * pixelSize
+                    if !p.julia && interior(px: px, py: py) {
                         al[x] = false; it[x] = p.maxIter
                     } else {
-                        zxr[x] = 0; zyr[x] = 0
-                        ccx[x] = Float(px); ccy[x] = Float(py)
+                        zxr[x] = p.julia ? Float(px) : 0; zyr[x] = p.julia ? Float(py) : 0
+                        ccx[x] = p.julia ? Float(p.jcx) : Float(px)
+                        ccy[x] = p.julia ? Float(p.jcy) : Float(py)
                         al[x] = true; it[x] = p.maxIter; nAlive += 1
                     }
                 }
                 var iter = 0
                 while iter < p.maxIter && nAlive > 0 {
                     var x = 0
-                    while x + 4 <= w {
-                        var anyAlive = false
-                        for l in 0 ..< 4 {
-                            if al[x + l] { anyAlive = true; break }
-                        }
-                        if anyAlive {
+                    while x < w4 {
+                        if al[x] || al[x + 1] || al[x + 2] || al[x + 3] {
                             let zx = SIMD4(zxr[x], zxr[x + 1], zxr[x + 2], zxr[x + 3])
                             let zy = SIMD4(zyr[x], zyr[x + 1], zyr[x + 2], zyr[x + 3])
                             let cx = SIMD4(ccx[x], ccx[x + 1], ccx[x + 2], ccx[x + 3])
                             let cy = SIMD4(ccy[x], ccy[x + 1], ccy[x + 2], ccy[x + 3])
                             let zx2 = zx * zx, zy2 = zy * zy
                             let esc = (zx2 + zy2) .> four
-                            for l in 0 ..< 4 where al[x + l] {
-                                if esc[l] {
-                                    al[x + l] = false
-                                    nAlive -= 1
-                                    it[x + l] = iter
-                                    md[x + l] = (zx2 + zy2)[l]
-                                }
+                            for l in 0 ..< 4 where al[x + l] && esc[l] {
+                                al[x + l] = false; nAlive -= 1
+                                it[x + l] = iter; md[x + l] = (zx2 + zy2)[l]
                             }
-                            let nzx = zx2 - zy2 + cx
-                            let nzy = 2.0 * zx * zy + cy
+                            let nzx = zx2 - zy2 + cx, nzy = 2.0 * zx * zy + cy
                             for l in 0 ..< 4 where al[x + l] {
-                                zxr[x + l] = nzx[l]
-                                zyr[x + l] = nzy[l]
+                                zxr[x + l] = nzx[l]; zyr[x + l] = nzy[l]
                             }
                         }
                         x += 4
-                    }
-                    while x < w {
-                        if al[x] {
-                            let zx = zxr[x], zy = zyr[x]
-                            let zx2 = zx * zx, zy2 = zy * zy
-                            if zx2 + zy2 > 4.0 {
-                                al[x] = false
-                                nAlive -= 1
-                                it[x] = iter
-                                md[x] = zx2 + zy2
-                            } else {
-                                zyr[x] = 2.0 * zx * zy + ccy[x]
-                                zxr[x] = zx2 - zy2 + ccx[x]
-                            }
-                        }
-                        x += 1
                     }
                     iter += 1
                 }
                 for x in 0 ..< w where it[x] < p.maxIter {
                     let smooth = Float(it[x]) + 1.0 - log2(0.5 * log(max(md[x], 4.0)))
-                    let (cr, cg, cb) = Palette.lookup(lut, smooth: Double(smooth),
-                                                       invMaxIter: invMax)
+                    let (cr, cg, cb) = Palette.lookup(lut, smooth: Double(smooth), invMaxIter: invMax)
                     rA[x] += Int(cr); gA[x] += Int(cg); bA[x] += Int(cb)
                 }
             }
         }
         let n = k * k
         for x in 0 ..< w {
-            writePixel(base: base, width: w, x: x, y: y,
-                       r: rA[x], g: gA[x], b: bA[x], n: n)
+            writePixel(base: base, width: w, x: x, y: y, r: rA[x], g: gA[x], b: bA[x], n: n)
         }
     }
 
@@ -422,12 +353,13 @@ public enum Fractal {
             if isCancelled() || stop.value { return }
             var sum = 0
             if useDouble {
-                var it = [Int](repeating: 0, count: w)
-                var al = [Bool](repeating: false, count: w)
-                var zxr = [Double](repeating: 0, count: w)
-                var zyr = [Double](repeating: 0, count: w)
-                var ccx = [Double](repeating: 0, count: w)
-                var ccy = [Double](repeating: 0, count: w)
+                let w4 = (w + 3) & ~3
+                var it = [Int](repeating: 0, count: w4)
+                var al = [Bool](repeating: false, count: w4)
+                var zxr = [Double](repeating: 0, count: w4)
+                var zyr = [Double](repeating: 0, count: w4)
+                var ccx = [Double](repeating: 0, count: w4)
+                var ccy = [Double](repeating: 0, count: w4)
                 for y in (c * chunk) ..< min((c + 1) * chunk, h) {
                     let py = topY + Double(y) * pixelSize
                     var nAlive = 0
@@ -444,51 +376,27 @@ public enum Fractal {
                     var iter = 0
                     while iter < maxIter && nAlive > 0 {
                         var x = 0
-                        while x + 4 <= w {
-                            var anyAlive = false
-                            for l in 0 ..< 4 {
-                                if al[x + l] { anyAlive = true; break }
-                            }
-                            if anyAlive {
+                        while x < w4 {
+                            if al[x] || al[x + 1] || al[x + 2] || al[x + 3] {
                                 let zx = SIMD4(zxr[x], zxr[x + 1], zxr[x + 2], zxr[x + 3])
                                 let zy = SIMD4(zyr[x], zyr[x + 1], zyr[x + 2], zyr[x + 3])
                                 let cx = SIMD4(ccx[x], ccx[x + 1], ccx[x + 2], ccx[x + 3])
                                 let cy = SIMD4(ccy[x], ccy[x + 1], ccy[x + 2], ccy[x + 3])
                                 let zx2 = zx * zx, zy2 = zy * zy
                                 let esc = (zx2 + zy2) .> SIMD4<Double>(repeating: 4.0)
-                                for l in 0 ..< 4 where al[x + l] {
-                                    if esc[l] {
-                                        al[x + l] = false
-                                        nAlive -= 1
-                                        it[x + l] = iter
-                                    }
+                                for l in 0 ..< 4 where al[x + l] && esc[l] {
+                                    al[x + l] = false; nAlive -= 1; it[x + l] = iter
                                 }
-                                let nzx = zx2 - zy2 + cx
-                                let nzy = 2.0 * zx * zy + cy
+                                let nzx = zx2 - zy2 + cx, nzy = 2.0 * zx * zy + cy
                                 for l in 0 ..< 4 where al[x + l] {
-                                    zxr[x + l] = nzx[l]
-                                    zyr[x + l] = nzy[l]
+                                    zxr[x + l] = nzx[l]; zyr[x + l] = nzy[l]
                                 }
                             }
                             x += 4
                         }
-                        while x < w {
-                            if al[x] {
-                                let zx = zxr[x], zy = zyr[x]
-                                if zx * zx + zy * zy > 4.0 {
-                                    al[x] = false
-                                    nAlive -= 1
-                                    it[x] = iter
-                                } else {
-                                    zyr[x] = 2.0 * zx * zy + ccy[x]
-                                    zxr[x] = zx * zx - zy * zy + ccx[x]
-                                }
-                            }
-                            x += 1
-                        }
                         iter += 1
                     }
-                    sum += it.reduce(0, +)
+                    sum += it[0 ..< w].reduce(0, +)
                     if isCancelled() { stop.value = true; return }
                 }
             } else {

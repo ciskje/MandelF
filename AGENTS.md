@@ -78,7 +78,7 @@ code does not have).
 
 - Z = bugfix/tweak, Y = new feature/behavior, X = upheaval.
 - Docs/refactor/build never change the version.
-- Current: `7.3.0` on all environments
+- Current: `7.3.1` on all environments
   (`macos-avalonia` intent parity pending verification, see TODO.md).
 - Single source per environment: `<Version>` in its `.csproj`
   (`windows-c` also mirrors it into `AppVersion.cs`; the two must match).

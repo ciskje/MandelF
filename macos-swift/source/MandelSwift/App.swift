@@ -7,7 +7,6 @@ import SwiftUI
 struct MandelApp: App {
     @StateObject private var model = ViewerModel()
     @State private var sheet: Sheet?
-    @State private var favorites: [URL] = []
 
     enum Sheet: Identifiable {
         case export, video, benchmark, log, about
@@ -18,7 +17,7 @@ struct MandelApp: App {
 
     var body: some Scene {
         WindowGroup("Mandelbrot Set Viewer v\(AppVersion.display)") {
-            ContentView(model: model, sheet: $sheet, favorites: $favorites)
+            ContentView(model: model, sheet: $sheet)
                 .frame(minWidth: 640, minHeight: 480)
                 .onAppear {
                     // Bare SPM executable: become a regular app
@@ -115,7 +114,6 @@ struct MandelApp: App {
 struct ContentView: View {
     @ObservedObject var model: ViewerModel
     @Binding var sheet: MandelApp.Sheet?
-    @Binding var favorites: [URL]
 
     var body: some View {
         VStack(spacing: 0) {

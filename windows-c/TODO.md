@@ -1,4 +1,5 @@
 ﻿# TODO — MandelC
+- [x] v7.3.1: Ponytail-audit refactor bump (patch, no behavior change) — completed (version sources + CHANGELOG + README; verified `dotnet build` 0 warnings 0 errors, no commit/push)
 - [ ] Rename leftover "MandelC#" strings (About tooltip, temp video folders) to MandelF — batch with the next code version (needs rebuild + bump)
 - [x] Single README screenshot (deep-zoom Thermal CUDA-double shot as the only image) — completed (docs only, no version bump)
 - [x] CUDA/DirectX fail with saved AMD iGPU (exact-match CUDA miss + denied iGPU swapchain; Auto works, verified headless) — completed (no code change, see QUESTIONS.md)

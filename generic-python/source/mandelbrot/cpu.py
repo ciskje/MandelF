@@ -1,39 +1,11 @@
 """Backend CPU (Numba prange + fallback numpy bit-identico)."""
-import math
 import time
-import threading
 import numpy as np
 from PIL import Image
 from . import state as S
-from .config import HALF0
 
 # ---------------- CPU (fallback) ----------------
 
-# v4.16.0: array di lavoro CPU cacheati per (w,h) (nessuna allocazione per
-# render: offset di griglia + real/imag/c/w4/z/diverged/it riutilizzati).
-# v5.0.0: escape loop Numba (opzionale, con fallback numpy bit-identico).
-# Il kernel fa SOLO il loop di escape (stessa semantica del loop numpy:
-# it = indice 0-based dell'iterazione in cui |z|^2 > 4, altrimenti 0);
-# geometria, prefiltro interior e coloring restano in numpy (invariati).
-# Cancellazione cooperativa (my_gen = generazione del job; 0 = nessuna
-# cancellazione, es. benchmark/CLI): le righe sono divise in 16 bande e il
-# contatore S._GEN[0] e' controllato a livello PYTHON tra le bande (affidabile;
-# un check in-kernel NON lo e': Numba/LLVM fa hoisting dei letture di
-# memoria cross-thread dentro prange, verificato sperimentalmente).
-# Se il job diventa obsoleto, le bande rimanenti vengono saltate e il frame
-# e' comunque scartato dal worker (doppia garanzia).
-# v5.3.0: flag di ok PER PRECISIONE (f32 e f64 si auto-specializzano in kernel
-# Numba distinti; se il self-test di bit-identita' NON passa per una
-# precisione, il fallback numpy resta attivo solo per quella).
-S._NUMBA_OK = {"f64": False, "f32": False}
-# v5.9.5: diagnostica del fallback single-core (visibile in Help >
-# Informazioni e come avviso in status bar). "import": "ok" o motivo del
-# fallimento; per precisione: "warmup in corso..." | "ok (multi-core)" |
-# motivo ("self-test..." / "compilazione fallita: ..."); "tempo": secondi
-# del warmup (None se non concluso).
-S._NUMBA_STATUS = {"import": "ok", "f64": "warmup in corso...",
-                 "f32": "warmup in corso...", "tempo": None}
-S._GEN = np.zeros(1, dtype=np.int32)
 try:
     from numba import njit, prange
 
@@ -43,13 +15,6 @@ try:
     # e' pagata dal thread di warmup all'avvio, prima del primo render CPU.
     @njit(parallel=True)
     def _mandel_escape(c, diverged, it, mag, mi, row0, row1):
-        # Solo il loop di fuga sulle righe [row0, row1). La cancellazione
-        # cooperativa e' gestita dal chiamante (compute_cpu) a livello
-        # PYTHON, tra bande di righe: un check in-kernel di un contatore
-        # scritto da un altro thread NON e' affidabile con Numba/LLVM
-        # (verificato sperimentalmente: il load di gen_arr[0] viene fatto
-        # una sola volta / hoistato fuori dal loop prange, quindi il bump
-        # cross-thread non e' visto e le righe vengono comunque elaborate).
         w = c.shape[1]
         for row in prange(row0, row1):
             for col in range(w):
@@ -60,7 +25,6 @@ try:
                 z_re = 0.0
                 z_im = 0.0
                 for i in range(mi):
-                    # z = z^2 + c (stesso ordine di operazioni del numpy)
                     z_re, z_im = z_re * z_re - z_im * z_im, 2.0 * z_re * z_im
                     z_re += vre
                     z_im += vim
@@ -71,13 +35,8 @@ try:
 except Exception as ex:
     njit = None
     prange = None
-    # v5.9.5: motivo registrato (prima muto) per la diagnostica in UI.
     S._NUMBA_STATUS["import"] = "numba non importabile: " + str(ex)[:160]
     S._NUMBA_STATUS["f64"] = S._NUMBA_STATUS["f32"] = "numba non disponibile"
-
-# Numba assente (import fallito) -> il motore CPU gira sul fallback numpy
-# single-core; lo segnalo nell'etichetta del backend (vedi backend()).
-S._NUMBA_AVAILABLE = (njit is not None)
 def _numba_selftest(cdt):
     """Self-test del kernel Numba contro il loop numpy di riferimento (4x4 con
     casi limite: interiori, fuga rapida/lenta, pre-diverged, overflow), STESSA
@@ -187,8 +146,6 @@ def _numba_warmup():
         except Exception as ex:
             S._NUMBA_STATUS[prec] = "compilazione fallita: " + str(ex)[:160]
     S._NUMBA_STATUS["tempo"] = round(time.perf_counter() - t0, 1)
-
-S._CPU_WS = {}
 
 def _cpu_ws(w, h, prec):
     # v5.3.0: workspace per PRECISIONE (dtype f32/f64). X/Y restano float64 in

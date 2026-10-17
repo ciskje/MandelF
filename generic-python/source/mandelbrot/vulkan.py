@@ -174,15 +174,6 @@ class VulkanBackend:
             rgb[:, :, 1] = (u >> 8) & 0xFF
             rgb[:, :, 2] = (u >> 16) & 0xFF
             return rgb
-S._VULKAN_OK = False
-S._VULKAN_BE = None
-# v5.9.2: adapter GPU fisici (backend Vulkan) enumerati all'avvio.
-# S._VULKAN_ADAPTERS = [(indice_enum, nome)]; S._VULKAN_DEV = posizione
-# selezionata (default 0). Il dropdown "GPU:" li mostra quando il motore
-# attivo e' Vulkan (prima pilotava solo CUDA: Vulkan usava sempre
-# l'high-performance -> benchmark quasi uguali su GPU diverse).
-S._VULKAN_ADAPTERS = []
-S._VULKAN_DEV = 0
 try:
     import wgpu  # wgpu-native: cross-platform (Windows/macOS/Linux)
     _enum = wgpu.gpu.enumerate_adapters_sync()
@@ -201,8 +192,6 @@ try:
         S._VULKAN_ADAPTERS.append((_ei, str(_inf.get("device", "GPU")).strip()))
     if not S._VULKAN_ADAPTERS:
         raise RuntimeError("nessun adapter GPU (Vulkan)")
-    # default = stesso adapter di prima (high-performance): prima voce che
-    # matcha (vendor, device), altrimenti la prima enumerata.
     try:
         _hp = dict(wgpu.gpu.request_adapter_sync(
             power_preference="high-performance").info)
@@ -223,10 +212,7 @@ except Exception:
     S._VULKAN_ADAPTERS = []
     S._VULKAN_DEV = 0
 def _vulkan_short_name(name):
-    # "NVIDIA GeForce RTX 5070 Ti" -> "GeForce RTX 5070 Ti" (dropdown compatto)
-    if name.startswith("NVIDIA "):
-        return name[len("NVIDIA "):]
-    return name
+    return name.removeprefix("NVIDIA ")
 
 def _vulkan_label(i):
     return "%d: %s" % (i, _vulkan_short_name(S._VULKAN_ADAPTERS[i][1]))

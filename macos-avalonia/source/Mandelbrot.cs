@@ -1,6 +1,5 @@
 using System.Collections.Concurrent;
 using System.Numerics;
-using Avalonia.Media.Imaging;
 
 namespace MandelbrotViewer;
 
@@ -21,8 +20,6 @@ public static class Mandelbrot
     public const double FloatPrecisionLimit = 1e-3;
     public const double BulbRadiusSq = 0.0625;
     public static readonly uint BlackArgb = 0xFF000000;
-
-    public static bool WantsDouble(double scale) => scale < FloatPrecisionLimit;
 
     // AutoIterForScale(scale) = clamp(2000*(1+log10(1.5/(scale/2))),50,50000) (§2.3)
     public static int AutoIterForScale(double scale)
@@ -112,17 +109,8 @@ public static class Mandelbrot
 
     // ---- Render entry-point contract (§2.8, §3) ----
 
-    public static void Render(WriteableBitmap bmp, double cx, double cy, double scale,
-        int maxIter, Palette palette, int k, CancellationToken ct,
-        double jcx = 0, double jcy = 0, bool julia = false, bool useDouble = true)
-    {
-        int w = bmp.PixelSize.Width, h = bmp.PixelSize.Height;
-        RenderTile(bmp, cx, cy, scale, maxIter, palette, k, ct, 0, 0, w, h, jcx, jcy, julia, useDouble);
-    }
-
     // Headless/testable core: renders into a raw 32-bit ARGB buffer (row-major,
-    // stride in ints). Shares the exact row kernels with the WriteableBitmap
-    // path, so headless results are bit-identical to UI renders.
+    // stride in ints).
     public static void RenderInto(int[] pixels, int w, int h,
         double cx, double cy, double scale, int maxIter, Palette palette, int k,
         CancellationToken ct, int offsetX, int offsetY, int fullWidth, int fullHeight,
@@ -171,33 +159,12 @@ public static class Mandelbrot
         });
     }
 
-    public static unsafe void RenderTile(WriteableBitmap bmp, double cx, double cy, double scale,
-        int maxIter, Palette palette, int k, CancellationToken ct,
-        int offsetX, int offsetY, int fullWidth, int fullHeight,
-        double jcx, double jcy, bool julia, bool useDouble)
-    {
-        int w = bmp.PixelSize.Width, h = bmp.PixelSize.Height;
-        using var fb = bmp.Lock();
-        int* dst = (int*)fb.Address;
-        int stride = fb.RowBytes / 4;
-        try
-        {
-            RenderCore(dst, stride, w, h, cx, cy, scale, maxIter, palette, k,
-                ct, offsetX, offsetY, fullWidth, fullHeight, jcx, jcy, julia, useDouble);
-        }
-        catch (OperationCanceledException)
-        {
-            // SPEC §2.8/§3.1: bitmap left untouched past unlock, exception propagates.
-            throw;
-        }
-    }
-
     private static unsafe void RenderRowScalar(int* row, int y, int w,
         double originX, double topY, double pixelSize, int offX, int offY, int k,
-        int maxIter, int[] lut, double invMax, double jcx, double jcy, bool julia)
+        int maxIter, int[] lut, double invMax, double jcx, double jcy, bool julia, int x0 = 0)
     {
         int div = k * k;
-        for (int x = 0; x < w; x++)
+        for (int x = x0; x < w; x++)
         {
             long sr = 0, sg = 0, sb = 0;
             for (int sy = 0; sy < k; sy++)
@@ -213,10 +180,10 @@ public static class Mandelbrot
 
     private static unsafe void RenderRowScalarFloat(int* row, int y, int w,
         double originX, double topY, double pixelSize, int offX, int offY, int k,
-        int maxIter, int[] lut, double invMax, double jcx, double jcy, bool julia)
+        int maxIter, int[] lut, double invMax, double jcx, double jcy, bool julia, int x0 = 0)
     {
         int div = k * k;
-        for (int x = 0; x < w; x++)
+        for (int x = x0; x < w; x++)
         {
             long sr = 0, sg = 0, sb = 0;
             for (int sy = 0; sy < k; sy++)
@@ -307,18 +274,7 @@ public static class Mandelbrot
                 row[x + i] = unchecked((int)0xFF000000) | ((int)(sR[i] / div) << 16) | ((int)(sG[i] / div) << 8) | (int)(sB[i] / div);
         }
         // scalar tail (must agree lane-by-lane with vector core)
-        for (; x < w; x++)
-        {
-            long sr = 0, sg = 0, sb = 0;
-            for (int sy = 0; sy < k; sy++)
-                for (int sx = 0; sx < k; sx++)
-                {
-                    var (px, py) = SubsamplePoint(originX, topY, pixelSize, offX, offY, x, y, k, sx, sy);
-                    int c = PixelDouble(px, py, maxIter, lut, invMax, jcx, jcy, julia);
-                    sr += (c >> 16) & 0xFF; sg += (c >> 8) & 0xFF; sb += c & 0xFF;
-                }
-            row[x] = unchecked((int)0xFF000000) | ((int)(sr / div) << 16) | ((int)(sg / div) << 8) | (int)(sb / div);
-        }
+        RenderRowScalar(row, y, w, originX, topY, pixelSize, offX, offY, k, maxIter, lut, invMax, jcx, jcy, julia, x);
     }
 
     private static void EscapeBlockDouble(Vector<double> vPx, Vector<double> vPy,
@@ -417,18 +373,7 @@ public static class Mandelbrot
             for (int i = 0; i < n; i++)
                 row[x + i] = unchecked((int)0xFF000000) | ((int)(sR[i] / div) << 16) | ((int)(sG[i] / div) << 8) | (int)(sB[i] / div);
         }
-        for (; x < w; x++)
-        {
-            long sr = 0, sg = 0, sb = 0;
-            for (int sy = 0; sy < k; sy++)
-                for (int sx = 0; sx < k; sx++)
-                {
-                    var (px, py) = SubsamplePoint(originX, topY, pixelSize, offX, offY, x, y, k, sx, sy);
-                    int c = PixelFloat(px, py, maxIter, lut, invMax, (float)jcx, (float)jcy, julia);
-                    sr += (c >> 16) & 0xFF; sg += (c >> 8) & 0xFF; sb += c & 0xFF;
-                }
-            row[x] = unchecked((int)0xFF000000) | ((int)(sr / div) << 16) | ((int)(sg / div) << 8) | (int)(sb / div);
-        }
+        RenderRowScalarFloat(row, y, w, originX, topY, pixelSize, offX, offY, k, maxIter, lut, invMax, jcx, jcy, julia, x);
     }
 
     private static void EscapeBlockFloat(Vector<float> vPx, Vector<float> vPy,
@@ -525,7 +470,7 @@ public static class Mandelbrot
                             double px = originX + gb * pixelSize;
                             double py = topY + gby * pixelSize;
                             int it;
-                            if (!false && IsInterior(px, py)) it = maxIter;
+                            if (IsInterior(px, py)) it = maxIter;
                             else if (useDouble) it = Escape(px, py, 0, 0, maxIter).Iter;
                             else
                             {

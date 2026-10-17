@@ -16,7 +16,7 @@ swift run --scratch-path "$SCRATCH" MandelF    # opens the viewer window
 
 ## Versioning
 
-- `7.3.0` (lockstep, see root AGENTS.md). Single source:
+- `7.3.1` (lockstep, see root AGENTS.md). Single source:
   `source/MandelCore/AppVersion.swift`.
 - Tag `macos-swift-vX.Y.Z` + `MandelF-swift-X.Y.Z-arm64.dmg` (`.app` bundle +
   Applications symlink, ad-hoc signed; Apple Developer ID needed for

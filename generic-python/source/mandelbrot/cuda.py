@@ -128,10 +128,6 @@ def _build_kernel(prec):
     for k, v in d.items():
         src = src.replace("@@" + k + "@@", v)
     return src, d["KNAME"]
-S._CUDA_OK = False
-S._KERNEL_F32 = None
-S._KERNEL_F64 = None
-S._BUF = None
 try:
     import cupy as cp
     if cp.cuda.is_available():
@@ -146,13 +142,6 @@ try:
 except Exception:
     S._CUDA_OK = False
 
-# v5.9.0: GPU CUDA multiple. S._CUDA_DEVICES = [(id, nome)] rilevate all'avvio;
-# S._CUDA_DEV = indice selezionato (default 0). Il dropdown "GPU:" in toolbar
-# compare solo se > 1. Il device CuPy e' PER-THREAD: i percorsi di render,
-# benchmark e warmup entrano in 'with cp.cuda.Device(S._CUDA_DEV)' (il .use()
-# qui sotto vale solo per il thread chiamante).
-S._CUDA_DEVICES = []
-S._CUDA_DEV = 0
 if S._CUDA_OK:
     try:
         for _i in range(cp.cuda.runtime.getDeviceCount()):
@@ -163,10 +152,7 @@ if S._CUDA_OK:
     except Exception:
         S._CUDA_DEVICES = []
 def _cuda_short_name(name):
-    # "NVIDIA GeForce RTX 5070 Ti" -> "GeForce RTX 5070 Ti" (dropdown compatto)
-    if name.startswith("NVIDIA "):
-        return name[len("NVIDIA "):]
-    return name
+    return name.removeprefix("NVIDIA ")
 
 def _cuda_label(i):
     _id, _nm = S._CUDA_DEVICES[i]
@@ -192,17 +178,6 @@ def set_cuda_device(i):
         pass
     return True
 
-# v6.2: split CUDA su 2 GPU (bande orizzontali, rapporto variabile).
-# Coppia = prime 2 CUDA; quota righe del primo = S._CUDA_SPLIT_RATIO.
-# S._BENCH_ACTIVE segnala che il benchmark e' in corso (v6.2.3: il bench usa
-# lo split quando attivo, come il render interattivo).
-S._BENCH_ACTIVE = False
-S._CUDA_SPLIT_ON = False
-S._CUDA_SPLIT_RATIO = 0.5
-S._CUDA_SPLIT_MIN_H = 32  # sotto: single (soglia tecnica, non policy)
-S._CUDA_SPLIT_BUFS = {}  # {dev_id: array} buffer device per banda (mai condivisi)
-S._CUDA_SPLIT_CALIBRATING = False
-S._CUDA_SPLIT_SWAP = False  # v6.2.3: bande invertite (solo parity diagnostica)
 def _cuda_split_devs():
     """(id0, id1) della coppia split, o None se < 2 device."""
     if len(S._CUDA_DEVICES) >= 2:
@@ -220,13 +195,6 @@ def set_cuda_split(on):
     S._CUDA_SPLIT_ON = bool(on)
     S._HW_CACHE.pop("cuda", None)
     return True
-
-# v6.2.3: handle kernel SEPARATI per device (niente RawKernel condiviso tra
-# i thread delle bande: la banda 2 riceveva row0=0, cioe' gli scalari del
-# lancio della banda 1). Compilati lazy una volta per (dev, prec) sotto lock;
-# i lanci restano paralleli.
-S._KERN_DEV = {}
-S._KERN_DEV_LOCK = threading.Lock()
 
 def _kern_for(dev, use64):
     """Handle kernel DEDICATO per (device, prec), compilato fresh una volta
@@ -374,10 +342,6 @@ def _cuda_render_array(dev, cx, cy, half, w, h, mi):
                           cx, cy, half)
         return out.get().reshape((h, w, 3)).copy()
 
-# v6.2.1: esito parity split-vs-single (None = non ancora misurata).
-S._CUDA_SPLIT_PARITY_OK = None
-S._CUDA_SPLIT_PARITY_DIFF = 0.0
-S._CUDA_SPLIT_PARITY_INFO = ""
 def _cuda_split_diag():
     """Riga diagnostica per Help > Informazioni (rapporto + parity)."""
     try:
@@ -450,26 +414,6 @@ def _cuda_split_parity():
         S._HW_CACHE.pop("cuda", None)
     except Exception:
         pass
-
-# ---------------- GPU (Metal, Apple Silicon) ----------------
-# Backend Metal per Apple GPU (M1...). Metal su Apple Silicon NON supporta
-# 'double' -> il backend Metal e' f32-ONLY (f64 resta solo sulla CPU, Numba).
-# Stesso criterio di escape, interior analitico e coloring (smooth iteration)
-# del kernel CUDA e del percorso CPU (v5.2.0): le tre vie producono lo stesso
-# colore, a parte 1-qualche ULP di FMA/contrazione sul bordo caotico (limitazione
-# intrinseca di f32, NON un difetto: Metal f32 e' all'altezza di CUDA f32 e CPU f32).
-# Vincoli pyobjc (scoperti a caro prezzo):
-#   - gli argomenti scalari vanno in uno struct passato via buffer [[buffer(1)]]
-#     (ne' scalari nudi ne' [[buffer]] su singoli float sono accettati);
-#   - MSL usa fmin/fmax/pow/sqrt/log2/log (senza suffisso 'f') e 'half' e'
-#     riservata (quindi il campo si chiama 'hs');
-#   - i puntatori richiedono l'address space esplicito (device/constant);
-#   - H2D/D2H: buf.contents().as_buffer(N) restituisce una memoryview scrivibile
-#     (C-level, ~0.01 ms) -> e' il ponte rapido (la varlist NON e' bytes-like);
-# v4.16.0: buffer host pinned per il D2H (DMA, ~1,7x piu' veloce di .get()
-# pageable su frame grandi). Cache per dimensione (max 3 slot).
-# NB CuPy 14: MemoryHost rimosso -> cp.cuda.PinnedMemory (+ ptr).
-S._PINNED = {}
 
 def _pinned_view(w, h):
     """(PinnedMemory, vista numpy uint8 h*w*3) su memoria host pinned."""

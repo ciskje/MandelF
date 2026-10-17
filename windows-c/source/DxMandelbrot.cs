@@ -190,7 +190,6 @@ float4 BenchPS(float4 pos : SV_Position) : SV_Target
     private static ID3D11Texture2D? _benchTarget;
     private static ID3D11RenderTargetView? _benchRtv;
     private static ID3D11Query?[] _benchQueries = Array.Empty<ID3D11Query?>();
-    private static int _benchGridW, _benchGridH;
 
     // Palette table for the colored shader: 1D RGBA texture with the CPU table
     // entries (gamma baked), hardware linear filtering interpolates between
@@ -595,8 +594,6 @@ float4 BenchPS(float4 pos : SV_Position) : SV_Target
         _benchQueries = new ID3D11Query?[BenchFlightMax];
         for (int i = 0; i < _benchQueries.Length; i++)
             _benchQueries[i] = _device.CreateQuery(new QueryDescription(QueryType.Event, QueryFlags.None));
-        _benchGridW = width;
-        _benchGridH = height;
     }
 
     // Releases the offscreen benchmark resources.

@@ -90,14 +90,13 @@ public sealed class BenchmarkForm : Window
                 unsafe { new Span<int>(px).CopyTo(new Span<int>((void*)fb.Address, px.Length)); }
             _preview.Source = bmp;
 
-            var sw = System.Diagnostics.Stopwatch.StartNew();
             var progress = new Progress<BenchmarkProgress>(p => Dispatcher.UIThread.Post(() =>
             {
                 double pct = Math.Min(100, 100 * p.Seconds / BenchmarkStandard.BudgetSeconds);
                 string rate = p.Seconds >= 0.2 && p.SamplesPerSecond > 0 ? $"  |  {BenchmarkProgress.FormatRate(p.SamplesPerSecond)}" : "";
                 _progress.Text = $"{pct:0}%{rate}";
             }));
-            var (total, secs, frames) = await Task.Run(() =>
+            var (_, secs, frames) = await Task.Run(() =>
             {
                 if (_gpu is not null)
                 {
@@ -124,8 +123,6 @@ public sealed class BenchmarkForm : Window
             _last = (frames, secs, mpixel);
             _chart.SetResult($"Risultato {mpixel:0.#}", mpixel);
             _csv.IsEnabled = true;
-            _ = total;
-            _ = sw;
         }
         catch (OperationCanceledException)
         {

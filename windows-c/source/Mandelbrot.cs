@@ -178,63 +178,24 @@ public static class Mandelbrot
                 var partitioner = Partitioner.Create(0, h, RenderRowChunk(h));
                 // Same sample coordinates on the global k-times grid in every path,
                 // so tiled output stays pixel-identical to a whole-frame render.
-                if (!useVector)
+                int vecLanes = !useFloat
+                    ? (use512 ? Vector512<double>.Count : Vector<double>.Count)
+                    : (use512 ? Vector512<float>.Count : Vector<float>.Count);
+                Parallel.ForEach(partitioner, options, range =>
                 {
-                    if (useFloat)
+                    for (int y = range.Item1; y < range.Item2; y++)
                     {
-                        Parallel.ForEach(partitioner, options, range =>
+                        if (!useVector)
                         {
-                            for (int y = range.Item1; y < range.Item2; y++)
-                                RenderRowScalarFloat(in args, target, y);
-                        });
-                    }
-                    else
-                    {
-                        Parallel.ForEach(partitioner, options, range =>
+                            if (useFloat) RenderRowScalarFloat(in args, target, y);
+                            else RenderRowScalar(in args, target, y);
+                        }
+                        else
                         {
-                            for (int y = range.Item1; y < range.Item2; y++)
-                                RenderRowScalar(in args, target, y);
-                        });
+                            RenderRowVector(in args, target, y, vecLanes, !useFloat, use512);
+                        }
                     }
-                }
-                else if (useFloat)
-                {
-                    if (use512)
-                    {
-                        Parallel.ForEach(partitioner, options, range =>
-                        {
-                            for (int y = range.Item1; y < range.Item2; y++)
-                                RenderRowVectorFloat512(in args, target, y);
-                        });
-                    }
-                    else
-                    {
-                        Parallel.ForEach(partitioner, options, range =>
-                        {
-                            for (int y = range.Item1; y < range.Item2; y++)
-                                RenderRowVectorFloat(in args, target, y);
-                        });
-                    }
-                }
-                else
-                {
-                    if (use512)
-                    {
-                        Parallel.ForEach(partitioner, options, range =>
-                        {
-                            for (int y = range.Item1; y < range.Item2; y++)
-                                RenderRowVectorDouble512(in args, target, y);
-                        });
-                    }
-                    else
-                    {
-                        Parallel.ForEach(partitioner, options, range =>
-                        {
-                            for (int y = range.Item1; y < range.Item2; y++)
-                                RenderRowVectorDouble(in args, target, y);
-                        });
-                    }
-                }
+                });
             }
         }
         finally
@@ -243,108 +204,55 @@ public static class Mandelbrot
         }
     }
 
-    // Scalar double row (fallback without SIMD hardware): one output pixel at a
-    // time, k×k subsamples averaged. Bit-identical to the vector double path.
-    private static unsafe void RenderRowScalar(in TileArgs a, TileTarget t, int y)
+    // Scalar double row (fallback without SIMD hardware + vector tail): one output
+    // pixel at a time, k×k subsamples averaged. Bit-identical to the vector double path.
+    private static unsafe void RenderRowScalar(in TileArgs a, TileTarget t, int y, int x0 = 0)
     {
         int* row = t.Dst + (long)y * t.Stride;
-        for (int x = 0; x < a.W; x++)
+        for (int x = x0; x < a.W; x++)
+            row[x] = ComputePixelDouble(in a, x, y);
+    }
+
+    // Scalar float row (fallback without SIMD hardware + vector tail): one output
+    // pixel at a time through ComputePixelFloat. Matches the vector float path lane by lane.
+    private static unsafe void RenderRowScalarFloat(in TileArgs a, TileTarget t, int y, int x0 = 0)
+    {
+        int* row = t.Dst + (long)y * t.Stride;
+        for (int x = x0; x < a.W; x++)
+            row[x] = ComputePixelFloat(in a, x, y);
+    }
+
+    // SIMD row (double or float, 256-bit Vector<T> or 512-bit Vector512<T>):
+    // full n-lane blocks via the vector escape core, scalar tail for the remainder.
+    private static unsafe void RenderRowVector(in TileArgs a, TileTarget t, int y, int n, bool useDouble, bool use512)
+    {
+        int blocks = a.W / n;
+        int* row = t.Dst + (long)y * t.Stride;
+        Span<int> colors = stackalloc int[n];
+        Span<long> r = stackalloc long[n];
+        Span<long> g = stackalloc long[n];
+        Span<long> bb = stackalloc long[n];
+        for (int b = 0; b < blocks; b++)
         {
-            long r = 0, g = 0, b = 0;
+            int x0 = b * n;
+            r.Clear(); g.Clear(); bb.Clear();
             for (int sy = 0; sy < a.K; sy++)
             {
                 int globalBy = a.OffsetY * a.K + y * a.K + sy;
                 double py = a.TopY + globalBy * a.PixelSize;
                 for (int sx = 0; sx < a.K; sx++)
                 {
-                    int globalBx = a.OffsetX * a.K + x * a.K + sx;
-                    double px = a.OriginX + globalBx * a.PixelSize;
-
-                    int c;
-                    // Cardioid + period-2 bulb early-out (Mandelbrot only):
-                    // interior points skip the escape loop entirely.
-                    if (a.IsMandelbrot && IsInteriorBulb(px, py))
+                    int gridBase = a.OffsetX * a.K + x0 * a.K + sx;
+                    if (useDouble)
                     {
-                        c = unchecked((int)0xFF000000);
+                        if (use512) EscapeBlockDouble512(gridBase, a.K, a.OriginX, a.PixelSize, py, in a, colors);
+                        else EscapeBlockDouble(gridBase, a.K, a.OriginX, a.PixelSize, py, in a, colors);
                     }
                     else
                     {
-                        // Julia: z(0) = pixel point, c = constant; Mandelbrot: z(0) = 0, c = pixel.
-                        double zx = a.Julia ? px : 0, zy = a.Julia ? py : 0;
-                        double ccx = a.Julia ? a.JuliaCx : px, ccy = a.Julia ? a.JuliaCy : py;
-                        double zx2 = zx * zx, zy2 = zy * zy;
-                        int iter = 0;
-
-                        while (iter < a.MaxIter && zx2 + zy2 <= 4.0)
-                        {
-                            zy = 2.0 * zx * zy + ccy;
-                            zx = zx2 - zy2 + ccx;
-                            zx2 = zx * zx;
-                            zy2 = zy * zy;
-                            iter++;
-                        }
-
-                        if (iter >= a.MaxIter)
-                        {
-                            c = unchecked((int)0xFF000000); // inside -> black
-                        }
-                        else
-                        {
-                            // Fast smooth: log2(0.5*ln(mod2)) equals the legacy
-                            // ln(ln(sqrt(mod2)))/ln2 with no sqrt and one less log.
-                            // The palette table is linearly interpolated, so no
-                            // quantization banding shows in smooth gradients.
-                            double mod = zx2 + zy2;
-                            if (mod < 4.0) mod = 4.0;
-                            double smooth = iter + 1.0 - Math.Log2(0.5 * Math.Log(mod));
-                            c = PaletteColors.ColorFromLut(a.Lut, smooth, a.InvMaxIter);
-                        }
+                        if (use512) EscapeBlockFloat512(gridBase, a.K, a.OriginX, a.PixelSize, py, in a, colors);
+                        else EscapeBlockFloat(gridBase, a.K, a.OriginX, a.PixelSize, py, in a, colors);
                     }
-                    r += (c >> 16) & 0xFF;
-                    g += (c >> 8) & 0xFF;
-                    b += c & 0xFF;
-                }
-            }
-            if (a.Samples == 1)
-                row[x] = unchecked((int)(0xFF000000u | ((uint)r << 16) | ((uint)g << 8) | (uint)b));
-            else
-                row[x] = unchecked((int)(0xFF000000u | ((uint)(r / a.Samples) << 16) | ((uint)(g / a.Samples) << 8) | (uint)(b / a.Samples)));
-        }
-    }
-
-    // Scalar float row (fallback without SIMD hardware): one output pixel at a
-    // time through ComputePixelFloat. Matches the vector float path lane by lane.
-    private static unsafe void RenderRowScalarFloat(in TileArgs a, TileTarget t, int y)
-    {
-        int* row = t.Dst + (long)y * t.Stride;
-        for (int x = 0; x < a.W; x++)
-            row[x] = ComputePixelFloat(in a, x, y);
-    }
-
-    // SIMD double row: full Vector<double>.Count blocks via the vector escape
-    // core, scalar tail for the remainder. Bit-identical to RenderRowScalar.
-    private static unsafe void RenderRowVectorDouble(in TileArgs a, TileTarget t, int y)
-    {
-        int n = Vector<double>.Count;
-        int blocks = a.W / n;
-        int* row = t.Dst + (long)y * t.Stride;
-        Span<int> colors = stackalloc int[n];
-        Span<long> r = stackalloc long[n];
-        Span<long> g = stackalloc long[n];
-        Span<long> bb = stackalloc long[n];
-        for (int b = 0; b < blocks; b++)
-        {
-            int x0 = b * n;
-            r.Clear(); g.Clear(); bb.Clear();
-            for (int sy = 0; sy < a.K; sy++)
-            {
-                int globalBy = a.OffsetY * a.K + y * a.K + sy;
-                double py = a.TopY + globalBy * a.PixelSize;
-                for (int sx = 0; sx < a.K; sx++)
-                {
-                    // Global subsample grid x of lane 0; lane i sits at +i*K.
-                    int gridBase = a.OffsetX * a.K + x0 * a.K + sx;
-                    EscapeBlockDouble(gridBase, a.K, a.OriginX, a.PixelSize, py, in a, colors);
                     for (int i = 0; i < n; i++)
                     {
                         int c = colors[i];
@@ -355,153 +263,10 @@ public static class Mandelbrot
                 }
             }
             for (int i = 0; i < n; i++)
-            {
-                if (a.Samples == 1)
-                    row[x0 + i] = unchecked((int)(0xFF000000u | ((uint)r[i] << 16) | ((uint)g[i] << 8) | (uint)bb[i]));
-                else
-                    row[x0 + i] = unchecked((int)(0xFF000000u | ((uint)(r[i] / a.Samples) << 16) | ((uint)(g[i] / a.Samples) << 8) | (uint)(bb[i] / a.Samples)));
-            }
+                row[x0 + i] = unchecked((int)(0xFF000000u | ((uint)(r[i] / a.Samples) << 16) | ((uint)(g[i] / a.Samples) << 8) | (uint)(bb[i] / a.Samples)));
         }
-        // Scalar tail: identical arithmetic to the vector lanes.
-        for (int x = blocks * n; x < a.W; x++)
-            row[x] = ComputePixelDouble(in a, x, y);
-    }
-
-    // SIMD-512 double row (AVX512, 8 lanes): same shape as
-    // RenderRowVectorDouble with twice the lanes per block. Bit-identical to
-    // the scalar path: lane coordinates and op order are unchanged, only the
-    // block width grows.
-    private static unsafe void RenderRowVectorDouble512(in TileArgs a, TileTarget t, int y)
-    {
-        int n = Vector512<double>.Count;
-        int blocks = a.W / n;
-        int* row = t.Dst + (long)y * t.Stride;
-        Span<int> colors = stackalloc int[n];
-        Span<long> r = stackalloc long[n];
-        Span<long> g = stackalloc long[n];
-        Span<long> bb = stackalloc long[n];
-        for (int b = 0; b < blocks; b++)
-        {
-            int x0 = b * n;
-            r.Clear(); g.Clear(); bb.Clear();
-            for (int sy = 0; sy < a.K; sy++)
-            {
-                int globalBy = a.OffsetY * a.K + y * a.K + sy;
-                double py = a.TopY + globalBy * a.PixelSize;
-                for (int sx = 0; sx < a.K; sx++)
-                {
-                    // Global subsample grid x of lane 0; lane i sits at +i*K.
-                    int gridBase = a.OffsetX * a.K + x0 * a.K + sx;
-                    EscapeBlockDouble512(gridBase, a.K, a.OriginX, a.PixelSize, py, in a, colors);
-                    for (int i = 0; i < n; i++)
-                    {
-                        int c = colors[i];
-                        r[i] += (c >> 16) & 0xFF;
-                        g[i] += (c >> 8) & 0xFF;
-                        bb[i] += c & 0xFF;
-                    }
-                }
-            }
-            for (int i = 0; i < n; i++)
-            {
-                if (a.Samples == 1)
-                    row[x0 + i] = unchecked((int)(0xFF000000u | ((uint)r[i] << 16) | ((uint)g[i] << 8) | (uint)bb[i]));
-                else
-                    row[x0 + i] = unchecked((int)(0xFF000000u | ((uint)(r[i] / a.Samples) << 16) | ((uint)(g[i] / a.Samples) << 8) | (uint)(bb[i] / a.Samples)));
-            }
-        }
-        // Scalar tail: identical arithmetic to the vector lanes.
-        for (int x = blocks * n; x < a.W; x++)
-            row[x] = ComputePixelDouble(in a, x, y);
-    }
-
-    // SIMD float row (explicit 32-bit setting): same structure in float.
-    // Approximate vs double (like CUDA 32-bit); tiling-independent by construction.
-    private static unsafe void RenderRowVectorFloat(in TileArgs a, TileTarget t, int y)
-    {
-        int n = Vector<float>.Count;
-        int blocks = a.W / n;
-        int* row = t.Dst + (long)y * t.Stride;
-        Span<int> colors = stackalloc int[n];
-        Span<long> r = stackalloc long[n];
-        Span<long> g = stackalloc long[n];
-        Span<long> bb = stackalloc long[n];
-        for (int b = 0; b < blocks; b++)
-        {
-            int x0 = b * n;
-            r.Clear(); g.Clear(); bb.Clear();
-            for (int sy = 0; sy < a.K; sy++)
-            {
-                int globalBy = a.OffsetY * a.K + y * a.K + sy;
-                double py = a.TopY + globalBy * a.PixelSize;
-                for (int sx = 0; sx < a.K; sx++)
-                {
-                    int gridBase = a.OffsetX * a.K + x0 * a.K + sx;
-                    EscapeBlockFloat(gridBase, a.K, a.OriginX, a.PixelSize, py, in a, colors);
-                    for (int i = 0; i < n; i++)
-                    {
-                        int c = colors[i];
-                        r[i] += (c >> 16) & 0xFF;
-                        g[i] += (c >> 8) & 0xFF;
-                        bb[i] += c & 0xFF;
-                    }
-                }
-            }
-            for (int i = 0; i < n; i++)
-            {
-                if (a.Samples == 1)
-                    row[x0 + i] = unchecked((int)(0xFF000000u | ((uint)r[i] << 16) | ((uint)g[i] << 8) | (uint)bb[i]));
-                else
-                    row[x0 + i] = unchecked((int)(0xFF000000u | ((uint)(r[i] / a.Samples) << 16) | ((uint)(g[i] / a.Samples) << 8) | (uint)(bb[i] / a.Samples)));
-            }
-        }
-        for (int x = blocks * n; x < a.W; x++)
-            row[x] = ComputePixelFloat(in a, x, y);
-    }
-
-    // SIMD-512 float row (AVX512, 16 lanes): same shape as
-    // RenderRowVectorFloat with twice the lanes per block. Lane coordinates
-    // use the scalar float formula, so blocks and scalar tails agree exactly.
-    private static unsafe void RenderRowVectorFloat512(in TileArgs a, TileTarget t, int y)
-    {
-        int n = Vector512<float>.Count;
-        int blocks = a.W / n;
-        int* row = t.Dst + (long)y * t.Stride;
-        Span<int> colors = stackalloc int[n];
-        Span<long> r = stackalloc long[n];
-        Span<long> g = stackalloc long[n];
-        Span<long> bb = stackalloc long[n];
-        for (int b = 0; b < blocks; b++)
-        {
-            int x0 = b * n;
-            r.Clear(); g.Clear(); bb.Clear();
-            for (int sy = 0; sy < a.K; sy++)
-            {
-                int globalBy = a.OffsetY * a.K + y * a.K + sy;
-                double py = a.TopY + globalBy * a.PixelSize;
-                for (int sx = 0; sx < a.K; sx++)
-                {
-                    int gridBase = a.OffsetX * a.K + x0 * a.K + sx;
-                    EscapeBlockFloat512(gridBase, a.K, a.OriginX, a.PixelSize, py, in a, colors);
-                    for (int i = 0; i < n; i++)
-                    {
-                        int c = colors[i];
-                        r[i] += (c >> 16) & 0xFF;
-                        g[i] += (c >> 8) & 0xFF;
-                        bb[i] += c & 0xFF;
-                    }
-                }
-            }
-            for (int i = 0; i < n; i++)
-            {
-                if (a.Samples == 1)
-                    row[x0 + i] = unchecked((int)(0xFF000000u | ((uint)r[i] << 16) | ((uint)g[i] << 8) | (uint)bb[i]));
-                else
-                    row[x0 + i] = unchecked((int)(0xFF000000u | ((uint)(r[i] / a.Samples) << 16) | ((uint)(g[i] / a.Samples) << 8) | (uint)(bb[i] / a.Samples)));
-            }
-        }
-        for (int x = blocks * n; x < a.W; x++)
-            row[x] = ComputePixelFloat(in a, x, y);
+        if (useDouble) RenderRowScalar(in a, t, y, blocks * n);
+        else RenderRowScalarFloat(in a, t, y, blocks * n);
     }
 
     // Vector escape core, double precision: one subsample for a full lane block.
@@ -1051,17 +816,14 @@ public static class Mandelbrot
         return (total, sw.Elapsed.TotalSeconds, frames);
     }
 
-    // Scalar benchmark row, double precision: non-SIMD fallback (same workload
-    // and early-outs as the vector core).
-    private static long BenchmarkRowScalarDouble(int y, double centerX, double topY, double pixelSize, int bigW, int maxIter)
+    // Scalar benchmark row (or vector tail), double precision.
+    private static long BenchmarkRowScalarDouble(int y, double centerX, double topY, double pixelSize, int bigW, int maxIter, int x0 = 0)
     {
         double cy = topY + y * pixelSize;
         long sum = 0;
-        for (int x = 0; x < bigW; x++)
+        for (int x = x0; x < bigW; x++)
         {
             double cx = centerX + (x - bigW * 0.5) * pixelSize;
-            // Cardioid + bulb early-out: known interior counts maxIter
-            // without running the escape loop (same rule as the render path).
             if (IsInteriorBulb(cx, cy))
             {
                 sum += maxIter;
@@ -1082,14 +844,14 @@ public static class Mandelbrot
         return sum;
     }
 
-    // Scalar benchmark row, single precision: float escape loop with the shared
-    // double bulb classification (mirrors the production float render path).
-    private static long BenchmarkRowScalarFloat(int y, double centerX, double topY, double pixelSize, int bigW, int maxIter)
+    // Scalar benchmark row (or vector tail), single precision: float escape loop
+    // with the shared double bulb classification.
+    private static long BenchmarkRowScalarFloat(int y, double centerX, double topY, double pixelSize, int bigW, int maxIter, int x0 = 0)
     {
         double cy = topY + y * pixelSize;
         float fcy = (float)cy;
         long sum = 0;
-        for (int x = 0; x < bigW; x++)
+        for (int x = x0; x < bigW; x++)
         {
             double dx = centerX + (x - bigW * 0.5) * pixelSize;
             if (IsInteriorBulb(dx, cy))
@@ -1113,78 +875,19 @@ public static class Mandelbrot
         return sum;
     }
 
-    // Vector benchmark row: full lane blocks plus a scalar tail.
-    // Param y (int): Input: grid row.
-    // Param centerX (double): Input: zone center, real axis.
-    // Param topY (double): Input: complex y of grid row 0.
-    // Param pixelSize (double): Input: complex units per grid step.
-    // Param bigW (int): Input: grid width in elementary samples.
-    // Param maxIter (int): Input: iteration budget per sample.
-    // Returns (long): Output: summed escape iterations of the row.
-    private static long BenchmarkRowVector(int y, double centerX, double topY, double pixelSize, int bigW, int maxIter)
+    // Vector benchmark row (256-bit or 512-bit), double precision: full lane blocks plus scalar tail.
+    private static long BenchmarkRowVector(int y, double centerX, double topY, double pixelSize, int bigW, int maxIter, bool use512)
     {
-        int n = Vector<double>.Count;
+        int n = use512 ? Vector512<double>.Count : Vector<double>.Count;
         int blocks = bigW / n;
         double cy = topY + y * pixelSize;
         double halfW = bigW * 0.5;
         long sum = 0;
         for (int b = 0; b < blocks; b++)
-            sum += BenchmarkBlockDouble(b * n, cy, centerX, halfW, pixelSize, maxIter);
-        for (int x = blocks * n; x < bigW; x++)
-        {
-            double cx = centerX + (x - halfW) * pixelSize;
-            if (IsInteriorBulb(cx, cy))
-            {
-                sum += maxIter;
-                continue;
-            }
-            double zx = 0, zy = 0, zx2 = 0, zy2 = 0;
-            int iter = 0;
-            while (iter < maxIter && zx2 + zy2 <= 4.0)
-            {
-                zy = 2.0 * zx * zy + cy;
-                zx = zx2 - zy2 + cx;
-                zx2 = zx * zx;
-                zy2 = zy * zy;
-                iter++;
-            }
-            sum += iter;
-        }
-        return sum;
-    }
-
-    // Vector-512 benchmark row: full 8-lane blocks plus a scalar tail.
-    // Same contract as BenchmarkRowVector.
-    private static long BenchmarkRowVector512(int y, double centerX, double topY, double pixelSize, int bigW, int maxIter)
-    {
-        int n = Vector512<double>.Count;
-        int blocks = bigW / n;
-        double cy = topY + y * pixelSize;
-        double halfW = bigW * 0.5;
-        long sum = 0;
-        for (int b = 0; b < blocks; b++)
-            sum += BenchmarkBlockDouble512(b * n, cy, centerX, halfW, pixelSize, maxIter);
-        for (int x = blocks * n; x < bigW; x++)
-        {
-            double cx = centerX + (x - halfW) * pixelSize;
-            if (IsInteriorBulb(cx, cy))
-            {
-                sum += maxIter;
-                continue;
-            }
-            double zx = 0, zy = 0, zx2 = 0, zy2 = 0;
-            int iter = 0;
-            while (iter < maxIter && zx2 + zy2 <= 4.0)
-            {
-                zy = 2.0 * zx * zy + cy;
-                zx = zx2 - zy2 + cx;
-                zx2 = zx * zx;
-                zy2 = zy * zy;
-                iter++;
-            }
-            sum += iter;
-        }
-        return sum;
+            sum += use512
+                ? BenchmarkBlockDouble512(b * n, cy, centerX, halfW, pixelSize, maxIter)
+                : BenchmarkBlockDouble(b * n, cy, centerX, halfW, pixelSize, maxIter);
+        return sum + BenchmarkRowScalarDouble(y, centerX, topY, pixelSize, bigW, maxIter, blocks * n);
     }
 
     // Vector escape counting for one lane block (benchmark, no coloring).
@@ -1365,133 +1068,43 @@ public static class Mandelbrot
     // Param ct: Input: cancellation token; checked each frame and by the Parallel.For.
     // Returns: Output: tuple (TotalIters = summed escape iterations over all frames,
     //   Seconds = effective elapsed seconds, Frames = completed frames).
-    public static (long TotalIters, double Seconds, int Frames) BenchmarkCpu(double centerX, double centerY, double scale, int w, int h, int maxIter, int supersample, TimeSpan budget, IProgress<BenchmarkProgress>? progress, CancellationToken ct)
+    public static (long TotalIters, double Seconds, int Frames) BenchmarkCpu(double centerX, double centerY, double scale, int w, int h, int maxIter, int supersample, TimeSpan budget, IProgress<BenchmarkProgress>? progress, CancellationToken ct) =>
+        BenchmarkCpuCore(centerX, centerY, scale, w, h, maxIter, supersample, useDouble: true, budget, progress, ct);
+
+    public static (long TotalIters, double Seconds, int Frames) BenchmarkCpuFloat(double centerX, double centerY, double scale, int w, int h, int maxIter, int supersample, TimeSpan budget, IProgress<BenchmarkProgress>? progress, CancellationToken ct) =>
+        BenchmarkCpuCore(centerX, centerY, scale, w, h, maxIter, supersample, useDouble: false, budget, progress, ct);
+
+    private static (long TotalIters, double Seconds, int Frames) BenchmarkCpuCore(double centerX, double centerY, double scale, int w, int h, int maxIter, int supersample, bool useDouble, TimeSpan budget, IProgress<BenchmarkProgress>? progress, CancellationToken ct)
     {
         int k = Math.Max(1, supersample);
         int bigW = w * k;
         int bigH = h * k;
         double pixelSize = scale / bigW;
         double topY = centerY - (bigH * 0.5) * pixelSize;
-
-        // The production CPU engine renders through SIMD vectors, so the benchmark
-        // measures the same vector core (same workload, same early-outs).
-        // The AVX512 wide path is used when available (same dispatch as the
-        // render path).
-        bool use512 = Vector.IsHardwareAccelerated && CpuUseAvx512;
-        Func<int, long> row = !Vector.IsHardwareAccelerated
-            ? y => BenchmarkRowScalarDouble(y, centerX, topY, pixelSize, bigW, maxIter)
-            : use512
-            ? y => BenchmarkRowVector512(y, centerX, topY, pixelSize, bigW, maxIter)
-            : y => BenchmarkRowVector(y, centerX, topY, pixelSize, bigW, maxIter);
+        bool useVec = Vector.IsHardwareAccelerated;
+        bool use512 = useVec && CpuUseAvx512;
+        Func<int, long> row = !useVec
+            ? (useDouble ? y => BenchmarkRowScalarDouble(y, centerX, topY, pixelSize, bigW, maxIter)
+                         : y => BenchmarkRowScalarFloat(y, centerX, topY, pixelSize, bigW, maxIter))
+            : (useDouble ? y => BenchmarkRowVector(y, centerX, topY, pixelSize, bigW, maxIter, use512)
+                         : y => BenchmarkRowFloat(y, centerX, topY, pixelSize, bigW, maxIter, use512));
         return RunCpuBenchmark(bigH, budget, progress, ct, row);
     }
 
-    // CPU benchmark, single precision: same standardized workload as BenchmarkCpu
-    // but through the float vector core (mirrors the production float render path:
-    // double bulb classification, float escape loop). Like CUDA 32-bit vs 64-bit,
-    // this is a separate workload with its own history, comparable against the
-    // float GPU bars. Same parameter/return contract as BenchmarkCpu.
-    // Param centerX: Input: benchmark zone center, real axis (complex units).
-    // Param centerY: Input: benchmark zone center, imaginary axis (complex units).
-    // Param scale: Input: complex width of the benchmark zone.
-    // Param w: Input: grid width in elementary samples (before supersample).
-    // Param h: Input: grid height in elementary samples (before supersample).
-    // Param maxIter: Input: iteration budget per sample (auto formula at the zone scale).
-    // Param supersample: Input: grid multiplier k; the measured grid is w*k × h*k
-    //   (standard uses 1).
-    // Param budget: Input: time budget per run (8 s standard); frames repeat until elapsed.
-    // Param progress: Input (nullable): UI progress sink, reported at most every
-    //   ReportInterval plus a final report; null disables reporting.
-    // Param ct: Input: cancellation token; checked each frame and by the parallel rows.
-    // Returns: Output: tuple (TotalIters = summed escape iterations over all frames,
-    //   Seconds = effective elapsed seconds, Frames = completed frames).
-    public static (long TotalIters, double Seconds, int Frames) BenchmarkCpuFloat(double centerX, double centerY, double scale, int w, int h, int maxIter, int supersample, TimeSpan budget, IProgress<BenchmarkProgress>? progress, CancellationToken ct)
+    // Vector benchmark row (256-bit or 512-bit), single precision: full lane blocks plus scalar tail.
+    private static long BenchmarkRowFloat(int y, double centerX, double topY, double pixelSize, int bigW, int maxIter, bool use512)
     {
-        int k = Math.Max(1, supersample);
-        int bigW = w * k;
-        int bigH = h * k;
-        double pixelSize = scale / bigW;
-        double topY = centerY - (bigH * 0.5) * pixelSize;
-
-        Func<int, long> row = !Vector.IsHardwareAccelerated
-            ? y => BenchmarkRowScalarFloat(y, centerX, topY, pixelSize, bigW, maxIter)
-            : CpuUseAvx512
-            ? y => BenchmarkRowFloat512(y, centerX, topY, pixelSize, bigW, maxIter)
-            : y => BenchmarkRowFloat(y, centerX, topY, pixelSize, bigW, maxIter);
-        return RunCpuBenchmark(bigH, budget, progress, ct, row);
-    }
-
-    // Vector benchmark row, single precision: full lane blocks plus a scalar tail.
-    // Same contract as BenchmarkRowVector, float arithmetic throughout (except the
-    // double bulb classification, shared with the production float render path).
-    private static long BenchmarkRowFloat(int y, double centerX, double topY, double pixelSize, int bigW, int maxIter)
-    {
-        int n = Vector<float>.Count;
+        int n = use512 ? Vector512<float>.Count : Vector<float>.Count;
         int blocks = bigW / n;
         double cy = topY + y * pixelSize;
         float fcy = (float)cy;
         double halfW = bigW * 0.5;
         long sum = 0;
         for (int b = 0; b < blocks; b++)
-            sum += BenchmarkBlockFloat(b * n, cy, fcy, centerX, halfW, pixelSize, maxIter);
-        for (int x = blocks * n; x < bigW; x++)
-        {
-            double dx = centerX + (x - halfW) * pixelSize;
-            if (IsInteriorBulb(dx, cy))
-            {
-                sum += maxIter;
-                continue;
-            }
-            float cx = (float)dx;
-            float zx = 0, zy = 0, zx2 = 0, zy2 = 0;
-            int iter = 0;
-            while (iter < maxIter && zx2 + zy2 <= 4f)
-            {
-                zy = 2f * zx * zy + fcy;
-                zx = zx2 - zy2 + cx;
-                zx2 = zx * zx;
-                zy2 = zy * zy;
-                iter++;
-            }
-            sum += iter;
-        }
-        return sum;
-    }
-
-    // Vector-512 benchmark row, single precision: full 16-lane blocks plus a
-    // scalar tail. Same contract as BenchmarkRowFloat.
-    private static long BenchmarkRowFloat512(int y, double centerX, double topY, double pixelSize, int bigW, int maxIter)
-    {
-        int n = Vector512<float>.Count;
-        int blocks = bigW / n;
-        double cy = topY + y * pixelSize;
-        float fcy = (float)cy;
-        double halfW = bigW * 0.5;
-        long sum = 0;
-        for (int b = 0; b < blocks; b++)
-            sum += BenchmarkBlockFloat512(b * n, cy, fcy, centerX, halfW, pixelSize, maxIter);
-        for (int x = blocks * n; x < bigW; x++)
-        {
-            double dx = centerX + (x - halfW) * pixelSize;
-            if (IsInteriorBulb(dx, cy))
-            {
-                sum += maxIter;
-                continue;
-            }
-            float cx = (float)dx;
-            float zx = 0, zy = 0, zx2 = 0, zy2 = 0;
-            int iter = 0;
-            while (iter < maxIter && zx2 + zy2 <= 4f)
-            {
-                zy = 2f * zx * zy + fcy;
-                zx = zx2 - zy2 + cx;
-                zx2 = zx * zx;
-                zy2 = zy * zy;
-                iter++;
-            }
-            sum += iter;
-        }
-        return sum;
+            sum += use512
+                ? BenchmarkBlockFloat512(b * n, cy, fcy, centerX, halfW, pixelSize, maxIter)
+                : BenchmarkBlockFloat(b * n, cy, fcy, centerX, halfW, pixelSize, maxIter);
+        return sum + BenchmarkRowScalarFloat(y, centerX, topY, pixelSize, bigW, maxIter, blocks * n);
     }
 
     // Vector escape counting for one lane block, single precision.

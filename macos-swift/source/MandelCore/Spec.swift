@@ -12,7 +12,6 @@ public enum Spec {
     public static let minIter = 50
     public static let maxIterLimit = 50000
     public static let defaultIter = 256
-    public static let iterStep = 50
     public static let bulbTest: Double = 0.0625
     public static let cardioidTest: Double = 0.25
     public static let wantsDoubleScale = 1e-3
@@ -26,7 +25,6 @@ public enum Spec {
     public static let videoFrames = [60, 120, 240, 480]
     public static let videoFps = [24, 30, 60]
     public static let backFrames = 120
-    public static let backFps = 30
 
     /// SPEC §2.3. Known: evaluates to 1011 at 9.36 (prose says ≈1944),
     /// 10915 at the benchmark scale. Formula kept exactly as written.

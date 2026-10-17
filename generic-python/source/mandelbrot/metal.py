@@ -159,8 +159,6 @@ class MetalBackend:
                 raise RuntimeError("Metal: command buffer fallita: %s" % r)
             mv = out.contents().as_buffer(need)
             return np.frombuffer(mv, dtype=np.uint8, count=need).reshape(h, w, 3).copy()
-S._METAL_OK = False
-S._METAL_BE = None
 try:
     import Metal  # pyobjc: disponibile su macOS con i framework di sistema
     if Metal.MTLCreateSystemDefaultDevice() is not None:

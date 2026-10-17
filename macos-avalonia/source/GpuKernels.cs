@@ -22,11 +22,6 @@ namespace MandelbrotViewer;
 //   iterations-only §2.1 loop, no coloring/smoothing/early-out, count → R32UI.
 public static class GpuKernels
 {
-    public const string RenderFloatName = "MandelRenderFloat";
-    public const string BenchFloatName = "MandelBenchFloat";
-
-    public static string[] ProgramNames => new[] { RenderFloatName, BenchFloatName };
-
     public const string FullscreenVertex = @"#version 410
 void main(){
   vec2 v[3] = vec2[3](vec2(-1.0,-1.0), vec2(3.0,-1.0), vec2(-1.0,3.0));
