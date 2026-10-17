@@ -20,9 +20,8 @@ in that environment.
 - [ ] `macos-avalonia`: fresh screenshots (main window + benchmark; no
   `screenshots/` in the repo) + manual visual checks (tooltip, chart,
   video MP4 — `ffmpeg` present at `~/.local/bin/ffmpeg`). Requires a GUI session.
-- [ ] publish `macos-python-v7.3.2` (tag + `dist/` + GitHub release; local
-  7.3.2 changes uncommitted: SPEC palettes + 1-based smooth; README Download
-  links to update to 7.3.2 at release time).
+- [x] publish `macos-python-v7.3.2` (tag + `dist/` + GitHub release;
+  README Download/title aligned to 7.3.2).
 
 ## Done
 
