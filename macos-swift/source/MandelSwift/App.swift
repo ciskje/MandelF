@@ -25,14 +25,6 @@ struct MandelApp: App {
                     // (dock icon, menu bar) once NSApp exists.
                     NSApp.setActivationPolicy(.regular)
                     NSApp.activate(ignoringOtherApps: true)
-                    // Single-window utility: drop the redundant File > Close
-                    // (Quit already exists; the red dot still closes).
-                    if let fileMenu = NSApp.mainMenu?.item(withTitle: "File")?.submenu,
-                       let close = fileMenu.items.first(where: {
-                           $0.action == #selector(NSWindow.performClose(_:))
-                       }) {
-                        fileMenu.removeItem(close)
-                    }
                 }
                 .onDisappear { model.saveSettings() }
                 .onChange(of: phase) {
