@@ -6,16 +6,7 @@
 
 Interactive Mandelbrot set viewer built with C# / WinForms (.NET 8, Windows only).
 
-![Screenshot](screen1.png?raw=true)
-
-![Screenshot](screen2.jpg)
-
-## Dialogs
-
-![Benchmark](screenshots/dialog-benchmark.png)
-
-*The CPU history bars were measured with the AVX512 kernel
-(Ryzen 9 9900X).*
+![Main window: deep zoom, Thermal palette, CUDA-double on RTX 4070 SUPER](screenshots/dialog-benchmarkV2.png)
 
 ## Features
 
