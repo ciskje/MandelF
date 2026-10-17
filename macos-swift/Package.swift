@@ -5,7 +5,7 @@ let package = Package(
     name: "MandelSwift",
     platforms: [.macOS(.v14)],
     products: [
-        .executable(name: "MandelSwift", targets: ["MandelSwift"]),
+        .executable(name: "MandelF", targets: ["MandelSwift"]),
         .executable(name: "SelfCheck", targets: ["SelfCheck"]),
         .executable(name: "MandelCLI", targets: ["MandelCLI"]),
     ],
