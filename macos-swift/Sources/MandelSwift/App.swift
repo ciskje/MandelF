@@ -2,94 +2,235 @@ import AppKit
 import MandelCore
 import SwiftUI
 
+/// SPEC §5 main window (macOS mappings per §1.6: Cmd = Ctrl, Cmd+[/] = back).
 @main
 struct MandelApp: App {
+    @StateObject private var model = ViewerModel()
+    @State private var sheet: Sheet?
+    @State private var favorites: [URL] = []
+
+    enum Sheet: Identifiable {
+        case export, video, benchmark, log, about
+        var id: Int { hashValue }
+    }
+
+    @Environment(\.scenePhase) private var phase
+
     var body: some Scene {
-        WindowGroup(AppVersion.display) {
-            ContentView()
+        WindowGroup("Mandelbrot Set Viewer v\(AppVersion.display)") {
+            ContentView(model: model, sheet: $sheet, favorites: $favorites)
+                .frame(minWidth: 640, minHeight: 480)
+                .onAppear {
+                    model.requestRender(w: 800, h: 560, preview: false)
+                }
+                .onDisappear { model.saveSettings() }
+                .onChange(of: phase) {
+                    if phase == .background { model.saveSettings() }
+                }
+        }
+        .defaultSize(width: 1152, height: 720)
+        .commands {
+            CommandGroup(replacing: .appInfo) {
+                Button("About MandelSwift...") { sheet = .about }
+            }
+            CommandMenu("File") {
+                Button("Load zone...") { model.loadZone() }
+                    .keyboardShortcut("o", modifiers: .command)
+                Button("Save zone...") { model.saveZone() }
+                    .keyboardShortcut("s", modifiers: .command)
+                Divider()
+                Button("Save image as...") { model.savePNG() }
+                    .keyboardShortcut("S", modifiers: [.command, .shift])
+                Divider()
+                Button("Benchmark...") { sheet = .benchmark }
+                    .keyboardShortcut("b", modifiers: .command)
+            }
+            CommandMenu("View") {
+                Button("Back") { goBack() }.keyboardShortcut("[", modifiers: .command)
+                    .disabled(!model.canBack)
+                Button("Forward") { goForward() }.keyboardShortcut("]", modifiers: .command)
+                    .disabled(!model.canForward)
+                Divider()
+                Button("Julia mode") { toggleJulia() }
+                    .keyboardShortcut("j", modifiers: .command)
+                Divider()
+                Button("Save favorite zone...") { model.saveFavorite() }
+                    .keyboardShortcut("d", modifiers: .command)
+                Menu("Favorite zones") { favoriteItems(delete: false) }
+                Menu("Delete favorite") { favoriteItems(delete: true) }
+            }
+            CommandMenu("Generate") {
+                Button("Screenshot...") { sheet = .export }
+                    .keyboardShortcut("E", modifiers: [.command, .shift])
+                Button("Zoom video...") { sheet = .video }
+                    .keyboardShortcut("V", modifiers: [.command, .shift])
+                Divider()
+                Button("Back to set (RealTime)") { model.backToSet() }
+                    .keyboardShortcut("R", modifiers: [.command, .shift])
+            }
+            CommandMenu("Help") {
+                Button("Show log / diagnostics...") { sheet = .log }
+            }
+        }
+    }
+
+    private func goBack() {
+        if let z = model.doBack() { model.apply(z, push: false) }
+    }
+
+    private func goForward() {
+        if let z = model.doForward() { model.apply(z, push: false) }
+    }
+
+    private func toggleJulia() {
+        model.pushHistory(model.zone())
+        model.julia.toggle()
+        model.requestRender(w: Int(model.viewW), h: Int(model.viewH), preview: false)
+    }
+
+    @ViewBuilder
+    private func favoriteItems(delete: Bool) -> some View {
+        let favs = Store.favorites()
+        if favs.isEmpty {
+            Text("(none)").disabled(true)
+        } else {
+            ForEach(favs, id: \.self) { url in
+                Button(url.deletingPathExtension().lastPathComponent) {
+                    if delete {
+                        try? FileManager.default.removeItem(at: url)
+                    } else if let z = try? Store.readZone(from: url),
+                              z.validated() == nil {
+                        model.pushHistory(model.zone())
+                        model.apply(z, push: false)
+                    }
+                }
+            }
         }
     }
 }
 
 struct ContentView: View {
-    @State private var centerX = -0.5
-    @State private var centerY = 0.0
-    @State private var baseHeight = 2.8
-    @State private var maxIter = 256
-    @GestureState private var zoom: CGFloat = 1
-    @GestureState private var drag: CGSize = .zero
-
-    private let barH: CGFloat = 28
+    @ObservedObject var model: ViewerModel
+    @Binding var sheet: MandelApp.Sheet?
+    @Binding var favorites: [URL]
 
     var body: some View {
-        GeometryReader { geo in
-            let w = max(1, Int(geo.size.width))
-            let h = max(1, Int(geo.size.height - barH))
-            // 1/3 preview while gesturing, full-res on release.
-            let div = (zoom != 1 || drag != CGSize.zero) ? 3 : 1
-            let rw = max(1, w / div)
-            let rh = max(1, h / div)
-            let vh = baseHeight / Double(zoom)
-            let step = vh / Double(rh)
-            let cx = centerX - Double(drag.width) * step
-            let cy = centerY - Double(drag.height) * step
-            VStack(spacing: 0) {
-                controls(cx: cx, cy: cy, vh: vh, w: rw, h: rh)
-                    .frame(height: barH)
-                if let img = nsImage(pixels: Mandelbrot.render(width: rw, height: rh, centerX: cx,
-                                                               centerY: cy, viewHeight: vh,
-                                                               maxIter: maxIter), w: rw, h: rh) {
-                    Image(nsImage: img)
-                        .resizable()
-                        .frame(width: geo.size.width, height: CGFloat(h))
+        VStack(spacing: 0) {
+            toolbarRow0
+            toolbarRow1
+            GeometryReader { geo in
+                FractalView(model: model)
+                    .onChange(of: geo.size) {
+                        model.requestRender(w: Int(geo.size.width),
+                                            h: Int(geo.size.height), preview: false)
+                    }
+            }
+            statusBar
+        }
+        .sheet(item: $sheet) { s in
+            switch s {
+            case .export: ExportSheet(model: model)
+            case .video: VideoSheet(model: model)
+            case .benchmark: BenchmarkSheet(model: model)
+            case .log: LogSheet(model: model)
+            case .about: AboutSheet()
+            }
+        }
+    }
+
+    // MARK: - Toolbar (§5.2, two rows)
+
+    private var toolbarRow0: some View {
+        HStack(spacing: 8) {
+            Button("↩ Home") { model.backToSet() }
+                .help("Back to set with RealTime animation (Ctrl+Shift+R)")
+            Button("Reset") {
+                model.reset()
+                model.requestRender(w: Int(model.viewW), h: Int(model.viewH),
+                                    preview: false)
+            }.help("Restore the initial set view (R key)")
+            Button("Benchmark") { sheet = .benchmark }
+                .help("Open the standard benchmark (Ctrl+B)")
+            Text("Iterations:")
+            TextField("", value: $model.maxIterManual, format: .number)
+                .frame(width: 70)
+                .help("Maximum iterations per pixel (+/- keys)")
+                .onSubmit {
+                    model.maxIterManual = Spec.clampIter(model.maxIterManual)
+                    model.requestRender(w: Int(model.viewW), h: Int(model.viewH),
+                                        preview: false)
+                }
+            Toggle("Auto", isOn: $model.iterAuto)
+                .help("Automatic iterations: grow with zoom level")
+                .onChange(of: model.iterAuto) {
+                    model.requestRender(w: Int(model.viewW), h: Int(model.viewH),
+                                        preview: false)
+                }
+            Text("Palette:")
+            Picker("", selection: $model.palette) {
+                ForEach(0 ..< Palette.names.count, id: \.self) { i in
+                    Text(Palette.names[i]).tag(i)
                 }
             }
-            .gesture(
-                DragGesture()
-                    .updating($drag) { v, s, _ in s = v.translation }
-                    .onEnded { v in
-                        // Preview step: gesture state is still live here.
-                        let s = baseHeight / Double(zoom) / Double(max(1, h / 3))
-                        centerX -= Double(v.translation.width) * s
-                        centerY -= Double(v.translation.height) * s
-                    }
-                    .simultaneously(with:
-                        MagnificationGesture()
-                            .updating($zoom) { v, s, _ in s = v }
-                            .onEnded { v in baseHeight /= Double(v) }
-                    )
-            )
-            .onTapGesture(count: 2) { reset() }
-        }
-        .frame(minWidth: 480, minHeight: 360)
-    }
-
-    private func controls(cx: Double, cy: Double, vh: Double, w: Int, h: Int) -> some View {
-        HStack {
-            Stepper("Iterations: \(maxIter)", value: $maxIter, in: 32 ... 4096, step: 32)
-            Button("Reset") { reset() }
+            .frame(width: 110)
+            .help("Fractal color palette (Fire, Ice, Thermal, Ocean, Violet, Desert, Forest)")
+            .onChange(of: model.palette) {
+                model.requestRender(w: Int(model.viewW), h: Int(model.viewH),
+                                    preview: false)
+            }
+            Text("AA:")
+            Picker("", selection: $model.aaIndex) {
+                Text("1x").tag(0); Text("2x").tag(1)
+                Text("4x").tag(2); Text("8x").tag(3)
+            }
+            .frame(width: 60)
+            .help("Antialiasing: 1x disabled, 2x/4x/8x average of nearby pixels")
+            .onChange(of: model.aaIndex) {
+                model.requestRender(w: Int(model.viewW), h: Int(model.viewH),
+                                    preview: false)
+            }
             Spacer()
-            Text(String(format: "%.5f, %.5f  h=%.4f  %dx%d", cx, cy, vh, w, h))
-                .font(.caption)
-                .foregroundStyle(.secondary)
         }
         .padding(.horizontal, 8)
+        .padding(.vertical, 4)
     }
 
-    private func reset() {
-        centerX = -0.5
-        centerY = 0.0
-        baseHeight = 2.8
-        maxIter = 256
+    private var toolbarRow1: some View {
+        HStack(spacing: 8) {
+            Text("Engine:")
+            Text("CPU").help("CPU multicore engine (always available)")
+            Text("GPU").foregroundStyle(.secondary)
+                .help("GPU engine: not available in this build (Metal pending)")
+            Text("Precision:")
+            Picker("", selection: $model.useDouble) {
+                Text("32").tag(false)
+                Text("64").tag(true)
+            }
+            .pickerStyle(.segmented)
+            .frame(width: 90)
+            .help("CPU precision 32-bit (float): faster, less precise. / 64-bit (double): more precise, slower.")
+            .onChange(of: model.useDouble) {
+                model.requestRender(w: Int(model.viewW), h: Int(model.viewH),
+                                    preview: false)
+            }
+            if model.julia {
+                Text(String(format: "Julia c=%.4f %.4fi", model.jcx, model.jcy))
+                    .font(.caption).foregroundStyle(.secondary)
+            }
+            Spacer()
+        }
+        .padding(.horizontal, 8)
+        .padding(.vertical, 4)
     }
-}
 
-func nsImage(pixels: [UInt8], w: Int, h: Int) -> NSImage? {
-    guard let provider = CGDataProvider(data: Data(pixels) as CFData),
-          let cg = CGImage(width: w, height: h, bitsPerComponent: 8, bitsPerPixel: 32,
-                           bytesPerRow: w * 4, space: CGColorSpaceCreateDeviceRGB(),
-                           bitmapInfo: CGBitmapInfo(rawValue: CGImageAlphaInfo.premultipliedLast.rawValue),
-                           provider: provider, decode: nil, shouldInterpolate: false,
-                           intent: .defaultIntent) else { return nil }
-    return NSImage(cgImage: cg, size: NSSize(width: w, height: h))
+    private var statusBar: some View {
+        HStack {
+            Text(model.status).font(.caption).lineLimit(1).truncationMode(.tail)
+            Spacer()
+            Text("Click: zoom | Wheel: zoom | Drag/arrows: pan | R: reset | S: save")
+                .font(.caption).foregroundStyle(.secondary)
+        }
+        .padding(.horizontal, 8)
+        .padding(.vertical, 2)
+    }
 }

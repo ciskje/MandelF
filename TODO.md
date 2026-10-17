@@ -10,20 +10,23 @@ before implementing:
 - Implement only for the current platform, update the row; Done rows are
   archived (deleted here) at each release — history lives in tags and
   release notes, not in this file.
-- Generic intents are also mirrored in `AGENTS.md` / the SPEC file.
+- Generic intents are also mirrored in `AGENTS.md` (§1–§8).
 
 Legend per row: `win-c:[x]` / `mac-avalonia:[x]` / `mac-swift:[x]` = shipped
 in that environment.
 
 ## Pending
 
-- [ ] `macos-swift`: feature parity with siblings (palette, auto-iter, history,
-  settings, export, benchmark, video — prioritize below).
-
 - [ ] `macos-avalonia`: install .NET 8 SDK (arm64) on this Mac, then
   `dotnet build MandelbrotViewer` + `dotnet test MandelbrotViewer.Tests`.
 - [ ] `generic`: create GitHub repo `ciskje/MandelF` and push `main`
   (needs explicit user request).
+
+## Done
+
+- [x] `macos-swift`: full SPEC CPU parity v0.2.0 (4 paths, LUT, SSAA, tiles,
+  Julia, history, zones/favorites, settings, export, benchmark+CSV, video,
+  back-to-set, log, about, CLI subset; SelfCheck 22/22, release zip).
 
 ## Done
 

@@ -1,4 +1,7 @@
 public enum AppVersion {
-    public static let current = "0.1.0"
-    public static let display = "MandelSwift " + current
+    public static let major = 0
+    public static let minor = 2
+    public static let patch = 0
+    public static let full = "\(major).\(minor).\(patch)"
+    public static let display = patch == 0 ? "\(major).\(minor)" : full
 }
