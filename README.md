@@ -4,7 +4,7 @@ Interactive Mandelbrot set viewer, one repo with one folder per environment:
 
 - `windows-c/` — C# / WinForms / .NET 8, Windows only (v2.24.2).
 - `macos-avalonia/` — C# / Avalonia 11 / .NET 8, macOS arm64 (v2.22.7).
-- `macos-swift/` — native SwiftUI / Swift 6, macOS 14+, Apple Silicon (v0.2.0).
+- `macos-swift/` — native SwiftUI / Swift 6, macOS 14+, Apple Silicon (v0.2.1).
 
 Shared math/render contracts: `AGENTS.md` (§1–§8).
 Workflow, versioning and releases: `AGENTS.md`. Change tracker: `TODO.md`.

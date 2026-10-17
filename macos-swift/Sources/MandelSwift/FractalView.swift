@@ -80,7 +80,7 @@ final class FractalNSView: NSView {
         moved = true
         Task { @MainActor in
             // top-based delta: AppKit y is up.
-            m.panBy(topDelta: CGSize(width: -dx, height: dy))
+            m.panBy(topDelta: CGSize(width: dx, height: -dy))
             m.requestRender(w: Int(m.viewW), h: Int(m.viewH), preview: true)
         }
         downPos = p

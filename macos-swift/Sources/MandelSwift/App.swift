@@ -20,9 +20,6 @@ struct MandelApp: App {
         WindowGroup("Mandelbrot Set Viewer v\(AppVersion.display)") {
             ContentView(model: model, sheet: $sheet, favorites: $favorites)
                 .frame(minWidth: 640, minHeight: 480)
-                .onAppear {
-                    model.requestRender(w: 800, h: 560, preview: false)
-                }
                 .onDisappear { model.saveSettings() }
                 .onChange(of: phase) {
                     if phase == .background { model.saveSettings() }
@@ -120,6 +117,10 @@ struct ContentView: View {
             toolbarRow1
             GeometryReader { geo in
                 FractalView(model: model)
+                    .onAppear {
+                        model.requestRender(w: Int(geo.size.width),
+                                            h: Int(geo.size.height), preview: false)
+                    }
                     .onChange(of: geo.size) {
                         model.requestRender(w: Int(geo.size.width),
                                             h: Int(geo.size.height), preview: false)
