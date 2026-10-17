@@ -19,6 +19,9 @@ in that environment.
 
 - [ ] `macos-avalonia`: verify v7.3.0 intent parity (AVX512 N/A on ARM;
   bench bars already remeasured upstream; document gaps if any).
+- [ ] `macos-avalonia`: take fresh screenshots (main window + benchmark,
+  like windows-c `dialog-benchmarkV2.png`; none in the repo).
+  bench bars already remeasured upstream; document gaps if any).
 - [ ] `macos-python`: publish `macos-python-v7.3.0` (dmg via
   `generic-python/packaging/build_app.py` on this Mac; tag already pushed).
 
