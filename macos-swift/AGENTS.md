@@ -16,7 +16,8 @@ swift run --scratch-path "$SCRATCH"           # opens the viewer window
 
 ## Versioning
 
-- `0.3.3`. Single source: `source/MandelCore/AppVersion.swift`.
+- `2.24.2` (lockstep, see root AGENTS.md). Single source:
+  `source/MandelCore/AppVersion.swift`.
 - Tag `macos-swift-vX.Y.Z` + `MandelSwift-X.Y.Z-arm64.dmg` (`.app` bundle +
   Applications symlink, ad-hoc signed; Apple Developer ID needed for
   notarized distribution).

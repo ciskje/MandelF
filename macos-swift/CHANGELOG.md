@@ -1,5 +1,10 @@
 # CHANGELOG — macos-swift
 
+## v2.24.2
+
+- Version alignment (lockstep): same SPEC intent set as windows-c 2.24.2.
+  No behavior change since 0.3.3.
+
 ## v0.3.1
 
 - Benchmark chart: windows-c reference bars (CUDA/DirectX/CPU) + no-overlap

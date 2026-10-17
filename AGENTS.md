@@ -69,13 +69,17 @@ before implementing:
 Legend per row: `win-c:[x]` / `mac-avalonia:[x]` / `mac-swift:[x]` = shipped
 in that environment.
 
-## Versioning (independent per environment)
+## Versioning (lockstep X.Y.Z)
 
-Each environment versions independently (`X.Y.Z` = its own intent set):
+Same version number on all environments: `X.Y.Z` = the same intent set.
+An environment publishes `X.Y.Z` when it has implemented those intents;
+if one lags, its release waits (never stamp a version whose intents the
+code does not have).
 
 - Z = bugfix/tweak, Y = new feature/behavior, X = upheaval.
 - Docs/refactor/build never change the version.
-- Current: `windows-c` `2.24.2`, `macos-avalonia` `2.22.7`, `macos-swift` `0.3.3`.
+- Current: `windows-c` `2.24.2`, `macos-swift` `2.24.2`,
+  `macos-avalonia` `2.22.7` (catch-up pending, see TODO.md).
 - Single source per environment: `<Version>` in its `.csproj`
   (`windows-c` also mirrors it into `AppVersion.cs`; the two must match).
   `macos-swift` uses `source/MandelCore/AppVersion.swift`.

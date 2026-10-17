@@ -17,6 +17,8 @@ in that environment.
 
 ## Pending
 
+- [ ] `macos-avalonia`: catch up to v2.24.2 intents (lockstep; verify against
+  windows-c changes since 2.22.7, then bump `<Version>` + AppVersion.cs).
 - [ ] `windows-c`: adopt the repo layout scheme (`packaging/` + `dist/`
   for the setup exe, scripts updated; on the Windows machine).
 - [ ] `generic`: create GitHub repo `ciskje/MandelF` and push `main`
