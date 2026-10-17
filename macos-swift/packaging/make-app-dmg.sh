@@ -23,6 +23,7 @@ mkdir -p "$STAGE"
 ln -s /Applications "$STAGE/Applications"
 hdiutil create -volname "MandelF-swift $VER" -srcfolder "$STAGE" -ov -format UDZO \
   "${TMPDIR}$DMG"
+rm -rf "dist/MandelF-swift.app" "dist/$DMG"
 cp -R "$APP" dist/
 cp "${TMPDIR}$DMG" dist/
 rm -rf "$STAGE" "${TMPDIR}$DMG"

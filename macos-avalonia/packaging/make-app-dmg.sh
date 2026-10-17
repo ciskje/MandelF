@@ -17,6 +17,10 @@ dotnet publish source -c Release -r osx-arm64 --self-contained \
 rm -rf "$STAGE" "dist/$DMG"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp -R "$PUB"/* "$APP/Contents/MacOS/"
+# .pdb/.DS_Store/._ sidecars must not ship: they break the --deep seal
+# (Gatekeeper "damaged") and are useless on macOS.
+rm -f "$APP"/Contents/MacOS/*.pdb
+find "$APP" -name "._*" -delete -o -name ".DS_Store" -delete
 sed "s/__VERSION__/$VER/g" packaging/Info.plist > "$APP/Contents/Info.plist"
 cp source/Assets/app.icns "$APP/Contents/Resources/AppIcon.icns"
 codesign --force --deep --sign - "$APP"
@@ -25,6 +29,7 @@ mkdir -p "$STAGE"
 ln -s /Applications "$STAGE/Applications"
 hdiutil create -volname "MandelF-avalonia $VER" -srcfolder "$STAGE" -ov -format UDZO \
   "${TMPDIR}$DMG"
+rm -rf "dist/MandelF-avalonia.app" "dist/$DMG"
 cp -R "$APP" dist/
 cp "${TMPDIR}$DMG" dist/
 rm -rf "$STAGE" "$PUB" "${TMPDIR}$DMG"

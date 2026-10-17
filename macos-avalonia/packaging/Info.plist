@@ -9,7 +9,7 @@
   <key>CFBundleShortVersionString</key><string>__VERSION__</string>
   <key>CFBundlePackageType</key><string>APPL</string>
   <key>CFBundleSignature</key><string>????</string>
-  <key>CFBundleExecutable</key><string>MandelbrotViewer</string>
+  <key>CFBundleExecutable</key><string>MandelF</string>
   <key>CFBundleIconFile</key><string>AppIcon</string>
   <key>LSMinimumSystemVersion</key><string>13.0</string>
   <key>NSHighResolutionCapable</key><true/>
