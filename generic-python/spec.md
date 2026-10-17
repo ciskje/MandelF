@@ -48,9 +48,10 @@ Comune alle 4 vie (differenze solo di 1–2 ULP, vedi §12.2–§12.3).
   `R < 2*sqrt(0.5*(R+A))`, `A = 1-4*Re(c)`, `R = |1-4c|`, con prefiltro
   bounding-box).
 - GPU: iterazione in coordinata spostata `w = z - cx` (solo parte reale).
-- Coloring smooth identico CPU/GPU: `nu = it + 1 - log2(0.5*ln(mag))`
+- Coloring smooth identico CPU/GPU e a SPEC §2.1: `it` conta gli update
+  (1-based, prima fuga -> `it == 1`), `nu = it + 1 - log2(0.5*ln(mag))`
   (`mag = |z|^2` alla fuga, `> 4`), `t = clip(nu/mi,0,1)^0.35`.
-  Solo `mag == 0` resta nero (distingue interiore da fuga a `it == 0`).
+  Solo `mag == 0` resta nero (mai fuggiti).
 - LUT 256x3 condivisa: `make_lut` = `linspace(0,1,256)` float64,
   `np.interp` per canale, `*255`, clip, `uint8`. Indice =
   `(t*255).astype(uint8)` = troncamento (non `round`).
@@ -60,14 +61,20 @@ Comune alle 4 vie (differenze solo di 1–2 ULP, vedi §12.2–§12.3).
   (`lut[pal*256+idx]`, colori packed `0x00RRGGBB` perché WGSL non ha `u8`).
 
 ## 3. Palette
-Registro `PALETTES` (fonte unica): ordine = indice kernel (0 fuoco, 1 ghiaccio,
-2 termal). UI, config e LUT kernel sono generati da qui. Default `fuoco`.
+Registro `PALETTES` (fonte unica): 7 palette x 5 stop come SPEC §2.4 normativa
+(root `AGENTS.md`); ordine = indice kernel (0 fuoco, 1 ghiaccio, 2 termal,
+3 ocean, 4 violet, 5 desert, 6 forest). UI, config e LUT kernel sono generati
+da qui. Default `fuoco`. Stops a t = 0, .25, .5, .75, 1 (valori 0-255):
 
-| palette  | n.stop | t | R | G | B |
-|---|---|---|---|---|---|
-| fuoco | 6 | 0,.2,.45,.7,.9,1 | .05,.35,.85,1,1,1 | 0,.02,.2,.65,.95,1 | 0,0,.02,.15,.55,1 |
-| ghiaccio | 5 | 0,.25,.5,.75,1 | .02,.05,.30,.70,1 | .02,.15,.55,.85,1 | .10,.45,.90,1,1 |
-| termal | 7 | 0,.2,.4,.55,.7,.85,1 | .02,.10,.55,.95,1,1,1 | .08,.45,.80,.96,.85,.55,.30 | .28,.85,.95,.98,.45,.20,.10 |
+| palette  | R | G | B |
+|---|---|---|---|
+| fuoco | 0,170,255,255,255 | 0,20,120,220,255 | 0,0,0,90,225 |
+| ghiaccio | 0,0,0,130,240 | 0,35,130,215,255 | 0,110,220,255,255 |
+| termal | 0,75,195,250,252 | 0,10,25,135,250 | 0,105,85,30,180 |
+| ocean | 0,0,0,85,235 | 0,40,120,200,250 | 0,95,175,225,255 |
+| violet | 60,210,120,0,210 | 0,0,40,200,255 | 80,190,220,230,255 |
+| desert | 0,95,185,235,255 | 0,50,110,190,245 | 0,10,40,110,220 |
+| forest | 55,115,95,60,205 | 32,78,125,170,235 | 12,32,45,70,175 |
 
 ## 4. Iterazioni (MI)
 - Auto (default, formula unica condivisa col benchmark):

@@ -70,7 +70,7 @@ __device__ __forceinline__ void process_pixel(
         wr = nr; wi = ni;
         @@T@@ zr = wr + cx;
         mag2 = zr * zr + wi * wi;
-        if (mag2 > 4.0@@S@@) { esc = true; it = i; }
+        if (mag2 > 4.0@@S@@) { esc = true; it = i + 1; }
     }
     unsigned char* p = out + (size_t)(out_row * w + col) * 3;
     if (!esc) { p[0] = 0; p[1] = 0; p[2] = 0; return; }

@@ -75,7 +75,7 @@ kernel void mandel(
         wr = nr; wi = ni;
         float zr = wr + cx;
         mag2 = zr * zr + wi * wi;
-        if (mag2 > 4.0f) { esc = true; it = i; }
+        if (mag2 > 4.0f) { esc = true; it = i + 1; }
     }
     if (!esc) { pp[0] = 0; pp[1] = 0; pp[2] = 0; return; }
 

@@ -1,6 +1,6 @@
 # ============================================================================
 # Insieme di Mandelbrot - visualizzatore interattivo
-# VERSIONE: 7.3.1
+# VERSIONE: 7.3.2
 # ----------------------------------------------------------------------------
 # Shim di compatibilita': il programma vive nel pacchetto mandelbrot/
 # (config/palette/state/mem/cuda/metal/vulkan/cpu/engine/app).

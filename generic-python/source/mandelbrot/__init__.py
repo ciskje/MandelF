@@ -1,10 +1,11 @@
-"""Mandelbrot v7.3.1 - pacchetto (ex mandel.py single-file).
+"""Mandelbrot v7.3.2 - pacchetto (ex mandel.py single-file).
 STORICO completo: `git log --oneline`. Qui solo le ultime 10 voci
 (lette da Help -> Novita` recenti...).
 """
-VERSION = "7.3.1"
+VERSION = "7.3.2"
 
 HISTORY = (
+    ("7.3.2", "2026-10-17", "Palette allineate a SPEC §2.4 normativa (stessi 7x5 stop degli altri env + ocean/violet/desert/forest nuove) e smooth 1-based come SPEC §2.1 (it conta gli update); mapping t=(smooth/mi)^0.35 e LUT 256 invariati. Python-vs-Swift: 0.3 LSB medi."),
     ("7.3.1", "2026-10-17", "Refactor ponytail-audit: rimossi ~1266 righe/-1 dipendenza senza cambio comportamento (dead code, wrapper, duplicati, scalar tail condivise, dialog chrome condiviso, short-name/latch unificati)."),
     ("7.3.0", "2026-09-04", "Config in cartella nascosta ~/.mandelbrot/ (prima ~/mandelbrot/), con migrazione automatica one-shot della vecchia config.json (vecchia cartella non toccata)."),
     ("7.2.1", "2026-09-04", "Benchmark senza hang infinito: timeout Metal 30 s (completed-handler con deadline invece di waitUntilCompleted bloccante; i valori status() grezzi non sono stabili tra versioni macOS) + deadline per-rendering (Metal 35 s, CPU 180 s); esiti/ambiente del benchmark in bench.log (nella cartella config); Help Informazioni mostra l'OS."),

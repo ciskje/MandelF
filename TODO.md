@@ -20,9 +20,9 @@ in that environment.
 - [ ] `macos-avalonia`: fresh screenshots (main window + benchmark; no
   `screenshots/` in the repo) + manual visual checks (tooltip, chart,
   video MP4 — `ffmpeg` present at `~/.local/bin/ffmpeg`). Requires a GUI session.
-- [ ] publish `macos-avalonia-v7.3.1` / `macos-swift-v7.3.1` /
-  `macos-python-v7.3.1` (tags + `dist/` + GitHub releases; local 7.3.1
-  builds verified on this Mac 2026-10-17, see Done below).
+- [ ] publish `macos-python-v7.3.2` (tag + `dist/` + GitHub release; local
+  7.3.2 changes uncommitted: SPEC palettes + 1-based smooth; README Download
+  links to update to 7.3.2 at release time).
 
 ## Done
 
@@ -36,6 +36,12 @@ in that environment.
   ok. Screenshots already fresh (`screenshots/`, today).
 - [x] `macos-python`: 7.3.1 version coherence (`VERSION` + shim header),
   headless CPU render smoke ok, `auto_mi` spot values 1011/10915 exact.
+- [x] publish `macos-avalonia-v7.3.1` / `macos-swift-v7.3.1` /
+  `macos-python-v7.3.1` (tags + `dist/` + GitHub releases 2026-10-17;
+  swift DMG rebuilt once to include the GPU float-only picker fix).
+- [x] `generic-python`: SPEC palette + smooth parity with Swift
+  (7x5 SPEC stops incl. 4 new palettes, 1-based smooth; python-vs-swift
+  0.3 LSB mean, black 100%).
 
 ## Done
 

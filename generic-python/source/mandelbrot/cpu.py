@@ -29,7 +29,7 @@ try:
                     z_re += vre
                     z_im += vim
                     if z_re * z_re + z_im * z_im > 4.0:
-                        it[row, col] = i
+                        it[row, col] = i + 1  # SPEC §2.1: iter conta gli update (1-based)
                         mag[row, col] = z_re * z_re + z_im * z_im
                         break
 except Exception as ex:
@@ -84,7 +84,7 @@ def _numba_selftest(cdt):
             if not m.any():
                 continue
             div |= m
-            it_ref[m] = i
+            it_ref[m] = i + 1
             mag_ref[m] = zr[m] * zr[m] + zi[m] * zi[m]
     # it[] (decisioni di fuga) DEVE coincidere SEMPRE, per entrambe le precisioni
     if not np.array_equal(it_numba, it_ref):
@@ -268,7 +268,7 @@ def compute_cpu(cx, cy, half, w, h, mi, my_gen=0, prec="f64"):
                 if not m.any():
                     continue
                 diverged |= m
-                it[m] = i
+                it[m] = i + 1  # SPEC §2.1: iter conta gli update (1-based)
                 mag[m] = zr[m] * zr[m] + zi[m] * zi[m]
     # v5.2.0: coloring IDENTICO al kernel GPU (smooth iteration):
     # nu = it + 1 - log2(0.5*ln|z|^2), t = (nu/mi)^0.35, dove |z|^2 e' il

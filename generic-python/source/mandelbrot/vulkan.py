@@ -55,7 +55,7 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
         wi = ni;
         let zr = wr + cx;
         mag2 = zr * zr + wi * wi;
-        if (mag2 > 4.0) { esc = true; it = i; }
+        if (mag2 > 4.0) { esc = true; it = i + 1; }
     }
     if (!esc) { out[ridx] = 0u; return; }
 

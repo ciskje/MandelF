@@ -3,34 +3,40 @@ import numpy as np
 
 
 # ---------------- Palette (LUT 256x3 condivisa CPU/GPU) ----------------
-_FIRE = (
-    (0.0, 0.2, 0.45, 0.7, 0.9, 1.0),
-    (0.05, 0.35, 0.85, 1.0, 1.0, 1.0),
-    (0.0, 0.02, 0.2, 0.65, 0.95, 1.0),
-    (0.0, 0.0, 0.02, 0.15, 0.55, 1.0),
-)
-_ICE = (
-    (0.0, 0.25, 0.5, 0.75, 1.0),
-    (0.02, 0.05, 0.30, 0.70, 1.0),
-    (0.02, 0.15, 0.55, 0.85, 1.0),
-    (0.10, 0.45, 0.90, 1.0, 1.0),
-)
-# Termal: parte col ghiaccio (blu/ciano chiari), passa dal bianco gelido e
-# finisce col fuoco (oro/arancio/rosso). t=0 ghiaccio, t=1 fuoco.
-_TERMAL = (
-    (0.0,  0.2,  0.4,  0.55, 0.7,  0.85, 1.0),
-    (0.02, 0.10, 0.55, 0.95, 1.00, 1.00, 1.00),
-    (0.08, 0.45, 0.80, 0.96, 0.85, 0.55, 0.30),
-    (0.28, 0.85, 0.95, 0.98, 0.45, 0.20, 0.10),
-)
+# Tabelle = SPEC §2.4 normativa (root AGENTS.md): 7 palette x 5 stop a
+# t = 0, .25, .5, .75, 1 (stessi colori di tutti gli altri env). Il mapping
+# t = (smooth/mi)^0.35 resta nel coloring (cpu.py/Metal/CUDA/Vulkan).
+_TSPEC = (0.0, 0.25, 0.5, 0.75, 1.0)
+def _spec(r, g, b):
+    return (_TSPEC, tuple(v / 255 for v in r), tuple(v / 255 for v in g),
+            tuple(v / 255 for v in b))
+
+_FIRE = _spec((0, 170, 255, 255, 255), (0, 20, 120, 220, 255),
+              (0, 0, 0, 90, 225))
+_ICE = _spec((0, 0, 0, 130, 240), (0, 35, 130, 215, 255),
+             (0, 110, 220, 255, 255))
+_TERMAL = _spec((0, 75, 195, 250, 252), (0, 10, 25, 135, 250),
+                (0, 105, 85, 30, 180))
+_OCEAN = _spec((0, 0, 0, 85, 235), (0, 40, 120, 200, 250),
+               (0, 95, 175, 225, 255))
+_VIOLET = _spec((60, 210, 120, 0, 210), (0, 0, 40, 200, 255),
+                (80, 190, 220, 230, 255))
+_DESERT = _spec((0, 95, 185, 235, 255), (0, 50, 110, 190, 245),
+                (0, 10, 40, 110, 220))
+_FOREST = _spec((55, 115, 95, 60, 205), (32, 78, 125, 170, 235),
+                (12, 32, 45, 70, 175))
 
 # Registro palette (fonte unica): l'ordine definisce l'indice passato al kernel
-# (0=fuoco, 1=ghiaccio, 2=termal). UI, config e __constant__ del kernel sono
-# tutti generati da questo dict.
+# (SPEC §2.4: 0 Fire, 1 Ice, 2 Thermal, 3 Ocean, 4 Violet, 5 Desert, 6 Forest).
+# UI, config e __constant__ del kernel sono tutti generati da questo dict.
 PALETTES = {
     "fuoco": _FIRE,
     "ghiaccio": _ICE,
     "termal": _TERMAL,
+    "ocean": _OCEAN,
+    "violet": _VIOLET,
+    "desert": _DESERT,
+    "forest": _FOREST,
 }
 
 def make_lut(pal):
