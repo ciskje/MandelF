@@ -551,7 +551,7 @@ struct AboutSheet: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text("Mandelbrot Set Viewer v\(AppVersion.display)").font(.title2)
-            Text("CPU multicore engine (SIMD lanes, 32/64-bit). GPU: Metal pending.")
+            Text("CPU multicore engine (SIMD lanes, 32/64-bit). GPU: Metal float engine + CPU fallback.")
                 .foregroundStyle(.secondary)
             Divider()
             Text("""

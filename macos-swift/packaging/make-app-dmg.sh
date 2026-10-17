@@ -1,6 +1,6 @@
 #!/bin/sh
 # Builds MandelSwift.app + DMG for publishing. Usage: make-app-dmg.sh <version>
-# (version must match Sources/MandelCore/AppVersion.swift).
+# (version must match source/MandelCore/AppVersion.swift).
 # Build happens on SSD scratch: the repo lives on NAS (slow disks).
 set -e
 cd "$(dirname "$0")/.."
