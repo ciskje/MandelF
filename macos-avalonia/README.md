@@ -1,6 +1,6 @@
 # MandelbrotViewer (macOS / Avalonia port)
 
-Replica platform-agnostic di **../AGENTS.md** (§1–§8) v2.22.7.
+Replica platform-agnostic di **../AGENTS.md** (§1–§8) v7.3.0.
 Scelte implementatore (§1.6): target **macOS arm64**, UI **Avalonia 11**,
 GPU **Metal** (fase pendente, fallback CPU per §4.9).
 
@@ -20,7 +20,7 @@ GPU **Metal** (fase pendente, fallback CPU per §4.9).
 - `published/` — binario self-contained osx-arm64
 - Dati utente: `~/Library/Application Support/source/` (settings.json, zone/)
 - `dist/` — `MandelbrotViewer.app` (bundle firmato ad-hoc, icona) e
-  `MandelbrotViewer-2.22.7-arm64.dmg` (con symlink Applicazioni).
+  `MandelF-avalonia-7.3.0-arm64.dmg` (con symlink Applicazioni).
   Nota: firma ad-hoc, non notarizzato — al primo avvio da DMG usare
   tasto destro → Apri (serve Developer ID a pagamento per distribuire senza avvisi)
 - Shortcut: binding reference con Ctrl mappato a Cmd su macOS (§1.6)

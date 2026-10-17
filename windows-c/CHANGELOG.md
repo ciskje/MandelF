@@ -3,6 +3,10 @@
 Versioning `X.Y.Z` (if `Z` is 0, short notation `X.Y`). Bump rules in
 `AGENTS.md`. The version is shown in the window title. Entries are grouped
 by minor series below, newest first.
+## v7.3.x — MandelF lockstep
+- **v7.3.0** — Version alignment with MandelF monorepo (MandelPy 7.3.0 line);
+  executable renamed `MandelF.exe`, installer `MandelF-Setup-7.3.0.exe`.
+  No behavior change vs v2.24.2.
 ## v2.24.x — AVX512 CPU kernel
 - **v2.24.2** — CPU history bars in the benchmark chart now say `AVX512`
   (`CPU 9900X AVX512`, `CPU 9900X float AVX512`; label gutter widened to

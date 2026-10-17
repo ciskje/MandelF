@@ -17,12 +17,12 @@ in that environment.
 
 ## Pending
 
-- [ ] `macos-avalonia`: catch up to v2.24.2 intents (lockstep; verify against
-  windows-c changes since 2.22.7, then bump `<Version>` + AppVersion.cs).
+- [ ] `macos-avalonia`: verify v7.3.0 intent parity (AVX512 N/A on ARM;
+  bench bars already remeasured upstream; document gaps if any).
 - [ ] `windows-c`: adopt the repo layout scheme (`packaging/` + `dist/`
   for the setup exe, scripts updated; on the Windows machine).
-- [ ] `windows-c`: publish `windows-c-v2.24.2` GitHub release with setup exe
-  (tag pushed; build + attach from the Windows machine).
+- [ ] `windows-c`: publish `windows-c-v7.3.0` GitHub release with setup exe
+  (tag will be pushed; build + attach from the Windows machine).
 
 ## Done
 

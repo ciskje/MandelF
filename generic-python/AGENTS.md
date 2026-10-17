@@ -1,3 +1,23 @@
+# AGENTS.md — generic-python (shared Python codebase, no platform code here)
+
+This folder holds the ONE copy of the Python viewer
+(`source/`: package `mandelbrot` + entry `mandel.py`;
+`packaging/`: PyInstaller build; `screenshots/`; `spec.md`).
+`windows-python/` and `macos-python/` are thin platform shells (own
+AGENTS.md, `dist/` artifacts) that run/build exactly this code —
+never duplicate sources here. Platform conditionals live in the code
+(`platform.system()`), never in copies.
+
+- Version `7.3.0` (lockstep, see root AGENTS.md). Single source:
+  `source/mandelbrot/__init__.py` (`VERSION`) + `source/mandel.py`
+  header (must match); HISTORY lives in `__init__.py`.
+- Normative behavior: root `AGENTS.md` §1–§8; on conflict it wins —
+  record discrepancies in `QUESTIONS.md` (create it when needed),
+  never tweak shared constants to match prose.
+- New content follows the repo rule (English); existing Italian files
+  stay untouched (history).
+
+---
 # Convenzioni del progetto
 
 ## 1. Struttura e file

@@ -78,8 +78,8 @@ code does not have).
 
 - Z = bugfix/tweak, Y = new feature/behavior, X = upheaval.
 - Docs/refactor/build never change the version.
-- Current: `windows-c` `2.24.2`, `macos-swift` `2.24.2`,
-  `macos-avalonia` `2.22.7` (catch-up pending, see TODO.md).
+- Current: `7.3.0` on all environments
+  (`macos-avalonia` intent parity pending verification, see TODO.md).
 - Single source per environment: `<Version>` in its `.csproj`
   (`windows-c` also mirrors it into `AppVersion.cs`; the two must match).
   `macos-swift` uses `source/MandelCore/AppVersion.swift`.

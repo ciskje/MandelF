@@ -1,5 +1,10 @@
 # CHANGELOG
 
+## 7.3.0 — MandelF lockstep alignment
+- Version 7.3.0 (was 2.22.7); executable renamed `MandelF`;
+  `.app`/`dmg` named `MandelF-avalonia-*`; `source/` layout.
+  No behavior change.
+
 ## 2.22.7 (2026-09-14) — fix animazione Home + rifiniture
 - Back-to-set: ogni frame ora atteso e mostrato in ordine (prima i frame lenti
   venivano cancellati dal successivo: freeze all'inizio, salti).

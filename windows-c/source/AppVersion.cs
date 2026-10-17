@@ -5,9 +5,9 @@
 // The UI shows Display: if Z is 0 the short notation "X.Y" is used.
 public static class AppVersion
 {
-    public const int Major = 2;
-    public const int Minor = 24;
-    public const int Patch = 2;
+    public const int Major = 7;
+    public const int Minor = 3;
+    public const int Patch = 0;
 
     public static string Full => $"{Major}.{Minor}.{Patch}";
 

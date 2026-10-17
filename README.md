@@ -36,14 +36,9 @@ release notes in English. Details in `AGENTS.md`.
 
 ## Screenshots
 
-| windows-c (WinForms) | macos-avalonia (Avalonia, GPU) | macos-swift (SwiftUI) |
-|---|---|---|
-| ![windows-c](windows-c/screen1.png) | ![macos-avalonia](macos-avalonia/screenshots/main-window.png) | ![macos-swift](macos-swift/screenshots/full-fire.png) |
-
-macos-swift zoom (Ice) and Julia (Violet) views:
-
-![zoom](macos-swift/screenshots/zoom-ice.png)
-![julia](macos-swift/screenshots/julia-violet.png)
+| Main window | Benchmark dialog |
+|---|---|
+| ![windows-c](windows-c/screen1.png) | ![benchmark](windows-c/screenshots/dialog-benchmark.png) |
 
 ## Build
 
