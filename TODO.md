@@ -17,6 +17,9 @@ in that environment.
 
 ## Pending
 
+- [ ] `windows-python`: fix CUDA backend detection (CuPy finds no GPU while
+  MandelC works on the same machine; ex-MandelPy issue #4 with screenshot).
+
 - [ ] `macos-avalonia`: verify v7.3.0 intent parity (AVX512 N/A on ARM;
   bench bars already remeasured upstream; document gaps if any).
 - [ ] `windows-c`: adopt the repo layout scheme (`packaging/` + `dist/`
