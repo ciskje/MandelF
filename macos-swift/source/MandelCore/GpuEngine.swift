@@ -390,7 +390,7 @@ public final class MetalEngine {
             lastError = "encode failed"
             return nil
         }
-        var params = GpuViewParams(p)
+        let params = GpuViewParams(p)
         var fparams = GpuViewParamsF(params)
         enc.setComputePipelineState(renderPipe)
         enc.setTexture(out, index: 0)

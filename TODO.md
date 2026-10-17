@@ -17,12 +17,25 @@ in that environment.
 
 ## Pending
 
-- [ ] `macos-avalonia`: verify v7.3.0 intent parity (AVX512 N/A on ARM;
-  bench bars already remeasured upstream; document gaps if any).
-- [ ] `macos-avalonia`: take fresh screenshots (main window + benchmark,
-  like windows-c `dialog-benchmarkV2.png`; none in the repo).
-- [ ] `macos-python`: publish `macos-python-v7.3.0` (dmg via
-  `generic-python/packaging/build_app.py` on this Mac; tag already pushed).
+- [ ] `macos-avalonia`: fresh screenshots (main window + benchmark; no
+  `screenshots/` in the repo) + manual visual checks (tooltip, chart,
+  video MP4 — `ffmpeg` present at `~/.local/bin/ffmpeg`). Requires a GUI session.
+- [ ] publish `macos-avalonia-v7.3.1` / `macos-swift-v7.3.1` /
+  `macos-python-v7.3.1` (tags + `dist/` + GitHub releases; local 7.3.1
+  builds verified on this Mac 2026-10-17, see Done below).
+
+## Done
+
+- [x] `macos-avalonia`: v7.3.1 intent parity verified on this Mac —
+  `dotnet build` 0 warnings, `dotnet test` 19/19, `--diag-gpu` GPU-ready
+  (Apple M1, test render ok), `--bench-cpu` 0.3 Mpixel/s (= documented M1
+  value), §1.3 file map complete. Known gaps: AVX512 N/A on ARM (by
+  design, `Vector<T>` uses AdvSIMD); manual UI checks still pending (above).
+- [x] `macos-swift`: 7.3.1 build verified on this Mac — 0 warnings (one-line
+  `var`→`let` fix in `GpuEngine.swift`), SelfCheck 27/27, `MandelCLI --shot`
+  ok. Screenshots already fresh (`screenshots/`, today).
+- [x] `macos-python`: 7.3.1 version coherence (`VERSION` + shim header),
+  headless CPU render smoke ok, `auto_mi` spot values 1011/10915 exact.
 
 ## Done
 
