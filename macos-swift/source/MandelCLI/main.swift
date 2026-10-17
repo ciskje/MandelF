@@ -33,7 +33,7 @@ case "--bench-cpu":
         print(String(format: "run %d: %.1f Mpixel/s (%d frames in %.2fs)", run, mpix, r.frames, r.seconds))
         if let csv {
             try? Benchmark.csvAppend(to: URL(fileURLWithPath: csv), engine: "CPU",
-                                     device: Diagnostics.cpuName() + Diagnostics.hostMacTag(), precision: precision,
+                                     device: Diagnostics.cpuName(), precision: precision,
                                      run: run, frames: r.frames, seconds: r.seconds, mpixelS: mpix)
         }
     }
@@ -68,7 +68,7 @@ case "--diag-gpu", "--bench-gpu":
         print(String(format: "run %d: %.1f Mpixel/s (%d frames in %.2fs)", run, mpix, r.frames, r.seconds))
         if let csv {
             try? Benchmark.csvAppend(to: URL(fileURLWithPath: csv), engine: "GPU",
-                                     device: eng.deviceShortName + Diagnostics.hostMacTag(), precision: "32-bit",
+                                     device: eng.deviceShortName, precision: "32-bit",
                                      run: run, frames: r.frames, seconds: r.seconds, mpixelS: mpix)
         }
     }

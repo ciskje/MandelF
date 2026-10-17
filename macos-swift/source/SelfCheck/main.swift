@@ -88,9 +88,6 @@ check(vec == sca, "double vector bit-identical to scalar")
 check(MemoryLayout<GpuViewParams>.size == 88, "GpuViewParams 88 bytes")
 let adapters = MetalEngine.adapterNames()
 check(!adapters.isEmpty, "Metal adapters present")
-let mac = Diagnostics.hostMac()
-check(mac.isEmpty || mac.range(of: #"^[0-9a-f]{2}(:[0-9a-f]{2}){5}$"#, options: .regularExpression) != nil,
-      "hostMAC format: \(mac.isEmpty ? "(none)" : mac)")
 let eng = MetalEngine()
 check(eng.tryInitialize(deviceName: nil), "Metal init: \(eng.lastError)")
 let gp = RenderParams(width: 64, height: 48, centerX: -0.5, centerY: 0,
