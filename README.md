@@ -66,7 +66,7 @@ cd macos-swift
 export SCRATCH="$TMPDIR/mandel-swift-build"   # SSD: repo lives on NAS
 swift build --scratch-path "$SCRATCH"
 swift run --scratch-path "$SCRATCH" SelfCheck  # SPEC assertions
-swift run --scratch-path "$SCRATCH" MandelSwift # viewer window
+swift run --scratch-path "$SCRATCH" MandelF # viewer window
 ./packaging/make-app-dmg.sh <version>   # .app + DMG in dist/
 ```
 
@@ -75,9 +75,9 @@ swift run --scratch-path "$SCRATCH" MandelSwift # viewer window
 One channel per environment (see `AGENTS.md` Tags & releases); keep the
 last 2 per environment:
 
-- `windows-c-vX.Y.Z` + `MandelbrotViewer-Setup-X.Y.Z-win-x64.exe`
-- `macos-avalonia-vX.Y.Z` + `MandelbrotViewer-X.Y.Z-arm64.dmg`
-- `macos-swift-vX.Y.Z` + `MandelSwift-X.Y.Z-arm64.dmg`
+- `windows-c-vX.Y.Z` + `MandelF-Setup-X.Y.Z-win-x64.exe`
+- `macos-avalonia-vX.Y.Z` + `MandelF-avalonia-X.Y.Z-arm64.dmg`
+- `macos-swift-vX.Y.Z` + `MandelF-swift-X.Y.Z-arm64.dmg`
 
 ## License
 

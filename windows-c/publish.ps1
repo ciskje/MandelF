@@ -7,10 +7,10 @@ Write-Host "Publishing MandelbrotViewer (Release, self-contained) to: $root\publ
 
 if ($LASTEXITCODE -ne 0) { throw "publish failed (exit $LASTEXITCODE)" }
 
-$exe = Join-Path $root 'published\MandelbrotViewer.exe'
+$exe = Join-Path $root 'published\MandelF.exe'
 if (Test-Path $exe) {
     $ver = (Get-Item $exe).VersionInfo.ProductVersion
     Write-Host "OK: $exe (version $ver)"
 } else {
-    throw "published\MandelbrotViewer.exe not found after publish"
+    throw "published\MandelF.exe not found after publish"
 }

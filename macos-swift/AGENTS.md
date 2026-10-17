@@ -10,15 +10,15 @@ Pure SwiftPM executable, no Xcode project (`import SwiftUI` for UI,
 cd macos-swift
 export SCRATCH="$TMPDIR/mandel-swift-build"   # .build on SSD: repo lives on NAS
 swift build --scratch-path "$SCRATCH"
-swift run SelfCheck --scratch-path "$SCRATCH"  # escape-time asserts
-swift run --scratch-path "$SCRATCH"           # opens the viewer window
+swift run --scratch-path "$SCRATCH" SelfCheck  # SPEC spot checks (no Xcode needed)
+swift run --scratch-path "$SCRATCH" MandelF    # opens the viewer window
 ```
 
 ## Versioning
 
 - `2.24.2` (lockstep, see root AGENTS.md). Single source:
   `source/MandelCore/AppVersion.swift`.
-- Tag `macos-swift-vX.Y.Z` + `MandelSwift-X.Y.Z-arm64.dmg` (`.app` bundle +
+- Tag `macos-swift-vX.Y.Z` + `MandelF-swift-X.Y.Z-arm64.dmg` (`.app` bundle +
   Applications symlink, ad-hoc signed; Apple Developer ID needed for
   notarized distribution).
 - Publish: `packaging/make-app-dmg.sh <version>` (release build on SSD

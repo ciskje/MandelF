@@ -1,4 +1,4 @@
-# MandelSwift (macOS SwiftUI port)
+# MandelF (macOS SwiftUI port)
 
 Native SwiftUI port of the Mandelbrot viewer: Swift 6, macOS 14+, Apple Silicon.
 Implements the shared contracts in `../AGENTS.md` (§1–§8): CPU engine
@@ -16,7 +16,7 @@ back-to-set, log, about, headless CLI.
 export SCRATCH="$TMPDIR/mandel-swift-build"   # .build on SSD: repo lives on NAS
 swift build --scratch-path "$SCRATCH"
 swift run --scratch-path "$SCRATCH" SelfCheck  # SPEC spot checks (no Xcode needed)
-swift run --scratch-path "$SCRATCH" MandelSwift  # opens the viewer window
+swift run --scratch-path "$SCRATCH" MandelF  # opens the viewer window
 ```
 
 Headless tools (same binary set, no UI):
@@ -45,7 +45,7 @@ packaging/make-app-dmg.sh <version>   # .app bundle + ad-hoc sign + DMG in dist/
 - `source/SelfCheck/` — runnable SPEC assertions.
 - `packaging/` — `Info.plist` + `make-app-dmg.sh`.
 - `screenshots/` — README images (regenerable via `--shot`).
-- `dist/` — `MandelSwift-X.Y.Z-arm64.dmg` (drag into Applications).
+- `dist/` — `MandelF-swift-X.Y.Z-arm64.dmg` (drag into Applications).
   Ad-hoc signed; Apple Developer ID needed for notarized distribution.
 - Settings/zones: `~/Library/Application Support/source/`
   (`zone/` subfolder for favorites).

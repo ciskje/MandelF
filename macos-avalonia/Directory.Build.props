@@ -1,0 +1,9 @@
+<!-- Redirect all build intermediates (bin/obj) to the SSD temp dir:
+     the repo lives on NAS (mechanical disks). Only active when TMPDIR is
+     set (macOS always sets it); otherwise fall back to per-project bin/obj.
+     Publish output (-o published/) is unaffected. -->
+<Project>
+  <PropertyGroup Condition="'$(TMPDIR)' != ''">
+    <ArtifactsPath>$(TMPDIR)mandel-avalonia-build</ArtifactsPath>
+  </PropertyGroup>
+</Project>

@@ -2,10 +2,10 @@
 ; read from the published exe, so this file never goes stale on version bumps).
 ; Built via setup.bat (publishes first, then compiles with ISCC).
 #define MyAppName "Mandelbrot Viewer"
-#define MyAppVersion GetFileVersion("published\MandelbrotViewer.exe")
+#define MyAppVersion GetFileVersion("published\MandelF.exe")
 #define MyAppPublisher "ciskje"
 #define MyAppURL "https://github.com/ciskje/MandelC"
-#define MyAppExeName "MandelbrotViewer.exe"
+#define MyAppExeName "MandelF.exe"
 
 [Setup]
 AppId={{B88299BB-C271-4C1A-90EC-D290CF499055}
@@ -17,7 +17,7 @@ AppSupportURL={#MyAppURL}
 DefaultDirName={autopf}\{#MyAppName}
 DefaultGroupName={#MyAppName}
 UninstallDisplayName={#MyAppName}
-OutputBaseFilename=MandelbrotViewer-Setup-{#MyAppVersion}
+OutputBaseFilename=MandelF-Setup-{#MyAppVersion}
 SetupIconFile=source\app.ico
 UninstallDisplayIcon={app}\{#MyAppExeName}
 ArchitecturesAllowed=x64compatible x86compatible

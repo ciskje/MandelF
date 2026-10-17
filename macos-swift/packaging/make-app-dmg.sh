@@ -1,13 +1,13 @@
 #!/bin/sh
-# Builds MandelSwift.app + DMG for publishing. Usage: make-app-dmg.sh <version>
+# Builds MandelF-swift.app + DMG for publishing. Usage: make-app-dmg.sh <version>
 # (version must match source/MandelCore/AppVersion.swift).
 # Build happens on SSD scratch: the repo lives on NAS (slow disks).
 set -e
 cd "$(dirname "$0")/.."
 VER="${1:?usage: make-app-dmg.sh <version>}"
 SCRATCH="${TMPDIR}mandel-swift-build"
-BIN="$SCRATCH/arm64-apple-macosx/release/MandelSwift"
-APP="dist/MandelSwift.app"
+BIN="$SCRATCH/arm64-apple-macosx/release/MandelF"
+APP="dist/MandelF-swift.app"
 STAGE="dist/stage"
 
 swift build -c release --scratch-path "$SCRATCH"
@@ -21,7 +21,7 @@ codesign --verify "$APP"
 mkdir -p "$STAGE"
 cp -R "$APP" "$STAGE/"
 ln -s /Applications "$STAGE/Applications"
-hdiutil create -volname "MandelSwift $VER" -srcfolder "$STAGE" -ov -format UDZO \
-  "dist/MandelSwift-$VER-arm64.dmg"
+hdiutil create -volname "MandelF-swift $VER" -srcfolder "$STAGE" -ov -format UDZO \
+  "dist/MandelF-swift-$VER-arm64.dmg"
 rm -rf "$STAGE"
 ls -la dist/

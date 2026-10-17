@@ -88,11 +88,11 @@ code does not have).
 
 One channel per environment, tags always carry the environment prefix:
 
-- `windows-c`: tag `windows-c-vX.Y.Z` + `MandelbrotViewer-Setup-X.Y.Z-win-x64.exe`
+- `windows-c`: tag `windows-c-vX.Y.Z` + `MandelF-Setup-X.Y.Z-win-x64.exe`
   (Inno Setup, per-machine install). Command in `windows-c/AGENTS.md`.
-- `macos-avalonia`: tag `macos-avalonia-vX.Y.Z` + `MandelbrotViewer-X.Y.Z-arm64.dmg`.
+- `macos-avalonia`: tag `macos-avalonia-vX.Y.Z` + `MandelF-avalonia-X.Y.Z-arm64.dmg`.
   Command in `macos-avalonia/AGENTS.md`.
-- `macos-swift`: tag `macos-swift-vX.Y.Z` + `MandelSwift-X.Y.Z-arm64.dmg`
+- `macos-swift`: tag `macos-swift-vX.Y.Z` + `MandelF-swift-X.Y.Z-arm64.dmg`
   (`.app` bundle + Applications symlink, ad-hoc signed). Command in `macos-swift/AGENTS.md`.
 - Every version bump is published (tag + release with artifact), otherwise
   Latest lags behind the code. Keep the **last 2 releases per environment**.

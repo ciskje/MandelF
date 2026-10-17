@@ -1,4 +1,5 @@
 ﻿# TODO — MandelC
+- [x] Write optimization implementation plan (no code change) — completed (3-phase plan WP1 I/O & buffer reuse, WP2 CPU SIMD mask cleanup, WP3 optional Brent periodicity check with A/B gates presented in chat; no version bump)
 - [x] Build installer via setup.bat and attach to v2.24.2 release — completed (ISCC direct call — this shell cannot capture cmd.exe output so setup.bat was bypassed, same result: MandelbrotViewer-Setup-2.24.2.exe ~47 MB renamed to 3-part README convention, attached to the release alongside the exe; installer stays git-ignored)
 - [x] Publish v2.24.2 (fresh self-contained exe, smoke test, README download update, commit + push + GitHub Release asset) — completed (published/MandelbrotViewer.exe 155 MB v2.24.2, --diag-gpu exit 0 CUDA OK; README → v2.24.2; installer not attached — no .iss build this round)
 - [x] Rename run.bat to debug.bat (`dotnet run` builds Debug) — completed (git mv, CRLF preserved; verified `debug.bat --diag-gpu` exit 0, CUDA render OK on 4070 SUPER; no version bump)

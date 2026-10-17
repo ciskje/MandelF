@@ -1,5 +1,46 @@
 # QUESTIONS — MandelC
 
+- **Can the program be optimized further?** — answered. The core escape loops
+  (CPU AVX512/AVX2, CUDA 2D PTX with FMA and autotuned blocks, DirectX HLSL
+  fullscreen triangle with offscreen event-query ring, 4096-entry LUT, on-chip
+  SSAA, cardioid/bulb early-out) are already near the hardware ceiling for a
+  direct per-pixel escape-time renderer, as confirmed by Nsight Systems and A/B
+  profiling. Remaining opportunities fall into three tiers:
+  1. **Zero-copy & buffer reuse in I/O paths (low effort, high payoff on
+     export/video/interactive transfers):**
+     - `GpuMandelbrot.RenderTile`: copy device pixels directly into
+       `BitmapData.Scan0` (`cuMemcpyDtoH_v2(data.Scan0, _dPixels, ...)`)
+       instead of staging through `int[] _renderPixels` + `Marshal.Copy`.
+     - `DxMandelbrot.ReadTextureToBitmap` & `RenderPreviewToBitmap`: copy rows
+       directly from `mapped.DataPointer` to `data.Scan0` (no `byte[]` bounce
+       buffer), and cache/reuse the offscreen render target + staging texture
+       across tiles and video frames instead of recreating D3D11 textures per
+       call.
+     - `ZoomVideoForm`: pipe raw BGRA frames directly to `ffmpeg`'s stdin
+       (`-f rawvideo -pix_fmt bgra`) instead of encoding/decoding hundreds of
+       temporary PNG files on disk, and reuse a single `Bitmap` buffer across
+       frames.
+     - `ExportForm`: reuse a single `512x512` tile `Bitmap` across the tile
+       loop instead of allocating one per tile.
+  2. **Algorithmic interior shortcuts (medium effort, large payoff on heavy
+     interior scenes and Julia sets):**
+     - **Periodicity checking (Brent's cycle detection):** detects trapped
+       orbits in higher-period bulbs and Julia set interiors (where the
+       cardioid/period-2 test does not apply) in tens of iterations instead of
+       running up to `maxIter` (50,000).
+     - **CPU benchmark loop mask cleanup:** in `BenchmarkBlock*`, replace
+       `ConditionalSelect(escaped, Zero, alive)` with `AndNot(alive, escaped)`
+       so `alive` stays 0 permanently after escape without needing the four
+       per-iteration `ConditionalSelect` freezes on `zx/zy/zx2/zy2` (which are
+       only needed when computing smooth coloring).
+  3. **Deep-zoom / GeForce FP64 bypass (high effort, architectural change):**
+     - **Double-float (`df64` / `float2`) emulation on GPU** or **perturbation
+       theory**: consumer GeForce cards throttle hardware FP64 to 1/64 of FP32
+       throughput (~6.7 vs ~310 MPixel/s on the 5070 Ti). Emulating ~48-bit
+       precision with pairs of `float` (or computing deltas around one CPU
+       reference orbit) runs on the fast FP32 units (~6–8x faster than native
+       FP64 on GeForce) and unlocks deep zoom on DirectX as well.
+
 - **Is pushing the same as publishing?** — answered. No. Pushing uploads
   the git commits (source code) to GitHub: anyone cloning gets the new
   code, but there is nothing ready to run. Publishing means building the

@@ -21,16 +21,13 @@ in that environment.
   windows-c changes since 2.22.7, then bump `<Version>` + AppVersion.cs).
 - [ ] `windows-c`: adopt the repo layout scheme (`packaging/` + `dist/`
   for the setup exe, scripts updated; on the Windows machine).
-- [ ] `generic`: create GitHub repo `ciskje/MandelF` and push `main`
-  (needs explicit user request).
+- [ ] `generic`: push tags + publish GitHub releases with artifacts
+  (macOS DMGs ready; windows-c exe from the Windows machine).
 
 ## Done
 
 - [x] `macos-swift`: benchmark chart with windows-c reference bars
   (Risultato + CUDA/DirectX/CPU, no-overlap layout).
-
-## Done
-
 - [x] `macos-swift`: full SPEC CPU parity + Metal GPU v0.3.0 (MSL float
   render+bench, params 88, LUT texture, autotune, gate, fallback; UI engine
   row, bench/export/video/log/CLI wired; SelfCheck incl. GPU smoke test).
