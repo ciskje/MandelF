@@ -39,9 +39,7 @@ release notes in English. Details in `AGENTS.md`.
 
 ## Screenshots
 
-![Main window](windows-c/screen1.png)
-
-![Benchmark dialog](windows-c/screenshots/dialog-benchmark.png)
+![windows-c: deep zoom, Thermal palette, CUDA-double on RTX 4070 SUPER](windows-c/screenshots/dialog-benchmarkV2.png)
 
 ![macos-python (ex-MandelPy, Metal f32)](macos-python/screenshots/main-window.png)
 
