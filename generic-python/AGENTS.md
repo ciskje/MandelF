@@ -8,7 +8,7 @@ AGENTS.md, `dist/` artifacts) that run/build exactly this code —
 never duplicate sources here. Platform conditionals live in the code
 (`platform.system()`), never in copies.
 
-- Version `7.3.1` (lockstep, see root AGENTS.md). Single source:
+- Version `7.3.2` (lockstep, see root AGENTS.md). Single source:
   `source/mandelbrot/__init__.py` (`VERSION`) + `source/mandel.py`
   header (must match); HISTORY lives in `__init__.py`.
 - Normative behavior: root `AGENTS.md` §1–§8; on conflict it wins —

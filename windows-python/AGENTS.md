@@ -15,7 +15,7 @@ fallback CPU. See `..\generic-python\source\mandelbrot\engine.py`.
 
 ## Versioning
 
-`7.3.1` (lockstep, see root AGENTS.md). Single source:
+`7.3.2` (lockstep, see root AGENTS.md). Single source:
 `..\generic-python\source\mandelbrot\__init__.py` (`VERSION`) +
 `..\generic-python\source\mandel.py` header (must match).
 

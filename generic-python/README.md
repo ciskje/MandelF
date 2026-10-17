@@ -14,7 +14,7 @@ bit-identico prima di ogni commit (vedi sotto).
 
 | Piattaforma | File |
 |---|---|
-| Windows 64-bit (v7.3.1) | [MandelF-python-7.3.1-win64.zip](https://github.com/ciskje/MandelF/releases/download/windows-python-v7.3.1/MandelF-python-7.3.1-win64.zip) |
+| Windows 64-bit (v7.3.2) | [MandelF-python-7.3.2-win64.zip](https://github.com/ciskje/MandelF/releases/download/windows-python-v7.3.2/MandelF-python-7.3.2-win64.zip) |
 | macOS (v7.3.2) | [MandelF-python-7.3.2-arm64.dmg](https://github.com/ciskje/MandelF/releases/download/macos-python-v7.3.2/MandelF-python-7.3.2-arm64.dmg) |
 
 Vulkan incluso ovunque; CUDA richiede driver NVIDIA + runtime utente

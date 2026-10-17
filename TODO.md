@@ -22,6 +22,8 @@ in that environment.
   video MP4 — `ffmpeg` present at `~/.local/bin/ffmpeg`). Requires a GUI session.
 - [x] publish `macos-python-v7.3.2` (tag + `dist/` + GitHub release;
   README Download/title aligned to 7.3.2).
+- [x] publish `windows-python-v7.3.2` (tag + `dist/` + GitHub release;
+  README Download/title aligned to 7.3.2; smoke-tested 15 s).
 
 ## Done
 
@@ -44,7 +46,7 @@ in that environment.
 
 ## Done
 
-- [x] `generic`: bump `7.3.0` → `7.3.1` (ponytail-audit refactor, lockstep all envs) — `win-c:[x]` / `mac-avalonia:[x]` source + tests green on Windows; `mac-swift:[ ]` `windows-python:[ ]` `macos-python:[ ]` rebuild/publish on their machines.
+- [x] `generic`: bump `7.3.0` → `7.3.1` (ponytail-audit refactor, lockstep all envs) — shipped in all envs (windows-c / macos-avalonia / macos-swift / windows-python / macos-python 7.3.1 releases 2026-10-17).
 - [x] `windows-c`: publish `windows-c-v7.3.0` GitHub release with setup exe
   (`dist/MandelF-Setup-7.3.0-win-x64.exe`, 47 MB, built + install-compiled
   on Windows; tag moved to release commit).
